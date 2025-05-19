@@ -2,96 +2,119 @@
   type: map
   contents:
     - name: Full Name
-      value: Albert Einstein
-    - name: Date of Birth
-      value: 14th March 1879
+      value: Salvador Hinojosa
+    - name: Email
+      value: salvador [dot] hinojosa [at] tec [dot] mx
     - name: Languages
-      value: English, German
+      value: English, Spanish
+
 
 - title: Education
   type: time_table
   contents:
-    - title: PhD
-      institution: University of Zurich, Zurich, Switzerland
-      year: 1905
+    - title: Ph.D. in Informatics Engineering
+      institution: Complutense University of Madrid, Spain
+      year: 2015 – 2019
       description:
-        - Description 1.
-        - Description 2.
-        - title: Description 3.
-          contents:
-            - Sub-description 1.
-            - Sub-description 2.
-    - title: Federal teaching diploma
-      institution: Eidgenössische Technische Hochschule, Zurich, Switzerland
-      year: 1900
+        - Thesis: Metaheuristic algorithms for image processing
+    - title: M.Sc. in Computer and Electronic Engineering
+      institution: University of Guadalajara, Mexico
+      year: 2013 – 2015
       description:
-        - Description 1.
-        - Description 2.
+        - Thesis: Detection of regions of interest in color images based on visual attention and metaheuristic algorithms
+    - title: B.Sc. in Computer Science
+      institution: University of Guadalajara, Mexico
+      year: 2008 – 2013
+      description:
+        - Thesis: Navigation of a mobile robot based on potential fields considering the angle of arrival to the target
 
 - title: Experience
   type: time_table
   contents:
-    - title: Professor of Theoretical Physics
-      institution: Institute for Advanced Study, Princeton University
-      year: 1933 - 1955
+    - title: Research Professor
+      institution: Tecnológico de Monterrey, Campus Guadalajara
+      year: 2022 - Present
+    - title: Lecturer
+      institution: CUCEI, University of Guadalajara
+      year: 2019 - 2021
       description:
-        - Description 1.
-        - Description 2.
-        - title: Description 3.
-          contents:
-            - Sub-description 1.
-            - Sub-description 2.
-    - title: Visiting Professor
-      institution: California Institute of Technology, Pasadena, California, US
-      year: 1933
+        - Taught programming academy courses
+    - title: Lecturer
+      institution: Tecnológico de Monterrey, Campus Guadalajara
+      year: 2019 - 2021
       description:
-        - Description 1.
-        - Description 2.
+        - Taught Quantitative Methods, Simulation, Software Quality and Testing
 
-    - title: Director
-      institution: Kaiser Wilhelm Institute for Physics, Berlin, Germany.
-      year: 1917-1933
-
-    - title: Professor of Theoretical Physics
-      institution: Karl-Ferdinand University, Prague, Czechoslovakia
-      year: 1911 - 1917
-      description:
-
-    - title: Associate Professor of Theoretical Physics
-      institution: University of Zurich, Zurich, Switzerland
-      year: 1909 - 1911
-
-- title: Open Source Projects
-  type: time_table
-  contents:
-    - title: <a href="https://github.com/alshedivat/al-folio">al-folio</a>
-      year: 2015-now
-      description: A beautiful, simple, clean, and responsive Jekyll theme for academics.
 
 - title: Honors and Awards
   type: time_table
   contents:
-    - year: 1921
+    - year: 2020–2027
       items:
-        - Nobel Prize in Physics
-        - Matteucci Medal
-    - year: 2029
+        - Member (Level 1), National Research System of Mexico (SNI-CONACYT)
+    - year: Since 2021
       items:
-        - Max Planck Medal
+        - Member, Mexican Academy of Computing (AMEXCOMP)
+    - year: Since 2018
+      items:
+        - Member, IEEE Society of Computational Intelligence
+    - year: Since 2019
+      items:
+        - Full Ph.D. Fellowship, CONACYT
+    - year: 2015-2019
+      items:
+        - Research stay at Freie Universität Berlin, CONACYT
+    - year: 2013–2015
+      items:
+        - Full Master’s Fellowship, CONACYT
+    - year: 2010–2012
+      items:
+        - Research Assistant Fellowship, CONACYT
 
 - title: Academic Interests
   type: nested_list
   contents:
-    - title: Topic 1.
+    - title: Optimization and Machine Learning
       items:
-        - Description 1.
-        - Description 2.
-    - title: Topic 2.
+        - Stochastic optimization
+        - Evolutionary computation
+    - title: Software Engineering
       items:
-        - Description 1.
-        - Description 2.
+        - Generative AI for Software Engineering
+        - MLOps and Software Testing
+    - title: Image Processing and Knowledge Graphs
+      items:
+        - Computer vision
+        - Knowledge-based systems
+
+- title: Thesis Supervision
+  type: time_table
+  contents:
+    - title: Ph.D. Supervision
+      institution: ITESM / UDG
+      year: 2024–2029
+      description:
+        - Large Language Models as Compliance Evaluators (Direction, ITESM)
+        - Automatic detection of ROIs in medical images (Co-direction, UDG)
+    - title: Master Supervision
+      institution: CUCEI, UDG
+      year: 2022
+      description:
+        - Branch coverage maximization in Python tests (Direction)
+        - Assessment tool for reading ability in children (Direction)
+
+- title: Editorial and Conferences
+  type: time_table
+  contents:
+    - year: 2020
+      items:
+        - Guest Editor, Remote Sensing Special Issue
+        - Reviewer for multiple journals including Elsevier and IEEE
+    - year: 2018
+      items:
+        - Session Chair, IEEE Conference on Evolving and Adaptive Intelligent Systems (EAIS)
 
 - title: Other Interests
   type: list
   contents:
-    - <u>Hobbies:</u> Hobby 1, Hobby 2, etc.
+    - <u>Professional Development Courses:</u> Agile Management, Quantum ML, NLP, LaTeX, etc.
