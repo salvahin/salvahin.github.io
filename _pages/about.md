@@ -6,8 +6,8 @@ subtitle: <a href='#'>Tecnológico de Monterrey</a>.
 
 profile:
   align: right
-  image: FotoBCN.jpg
-  image_circular: true # crops the image to make it circular
+  image: FotoCuadrada.jpg
+  image_circular: false # crops the image to make it circular
 
 
 selected_papers: false # includes a list of papers marked as "selected={true}"
