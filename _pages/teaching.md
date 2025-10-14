@@ -14,3 +14,7 @@ Advanced topics in evolutionary computation and nature-inspired optimization alg
 ### Lecture Slides
 
 - [Lecture 9: Multi-Objective Optimization]({{ '/assets/presentations/multiobjective.html' | relative_url }}) - Introduction to multi-objective optimization, Pareto optimality, NSGA-II, and related algorithms
+
+### Interactive Visualizations
+
+- [Multi-Objective Optimization Explorer]({{ '/assets/presentations/moo-visualization-simple.html' | relative_url }}) - Interactive tool to explore Pareto optimality, dominance relationships, and the trade-offs between conflicting objectives
