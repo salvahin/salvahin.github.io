@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Objective Optimization</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/theme/white.css">
+    <style>
+        .reveal h1 { font-size: 2.5em; color: #2c3e50; }
+        .reveal h2 { font-size: 2em; color: #34495e; }
+        .reveal h3 { font-size: 1.5em; color: #7f8c8d; }
+        .reveal .slides { text-align: left; }
+        .reveal ul { margin-left: 2em; }
+        .reveal li { margin: 0.5em 0; }
+        .definition-box {
+            background-color: #ecf0f1;
+            border-left: 5px solid #3498db;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .example-box {
+            background-color: #e8f5e9;
+            border-left: 5px solid #4caf50;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .key-point {
+            background-color: #fff3cd;
+            border-left: 5px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .comparison-table th, .comparison-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        .comparison-table th {
+            background-color: #3498db;
+            color: white;
+        }
+        .visual-diagram {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .fragment { margin: 10px 0; }
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+
+<!-- Title Slide -->
+<section>
+    <h1>Multi-Objective Optimization</h1>
+    <h3>Bio-Inspired Computational Intelligence</h3>
+    <p><em>Lecture 9: From Single to Multiple Objectives</em></p>
+</section>
+
+<!-- Learning Objectives -->
+<section>
+    <h2>Learning Objectives</h2>
+    <ul>
+        <li class="fragment">Understand the fundamental concepts of multi-objective optimization</li>
+        <li class="fragment">Learn about Pareto optimality and dominance</li>
+        <li class="fragment">Explore key multi-objective evolutionary algorithms</li>
+        <li class="fragment">Analyze performance metrics for comparing solutions</li>
+        <li class="fragment">Apply concepts to real-world problems</li>
+    </ul>
+</section>
+
+<!-- Section 1: Motivation -->
+<section>
+    <section>
+        <h2>Why Multiple Objectives?</h2>
+        <div class="key-point">
+            <strong>Real-world problems rarely have a single objective</strong>
+        </div>
+        <div class="fragment">
+            <p>Single-objective thinking:</p>
+            <ul>
+                <li>"Minimize cost"</li>
+                <li>"Maximize performance"</li>
+            </ul>
+        </div>
+    </section>
+
+    <section>
+        <h3>The Reality of Engineering Design</h3>
+        <div class="two-column">
+            <div>
+                <h4>Aircraft Design</h4>
+                <ul>
+                    <li>Minimize weight ↓</li>
+                    <li>Maximize strength ↑</li>
+                    <li>Minimize cost ↓</li>
+                    <li>Maximize fuel efficiency ↑</li>
+                </ul>
+            </div>
+            <div>
+                <h4>Portfolio Selection</h4>
+                <ul>
+                    <li>Maximize return ↑</li>
+                    <li>Minimize risk ↓</li>
+                    <li>Maximize liquidity ↑</li>
+                    <li>Minimize transactions ↓</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h3>Real-World Examples</h3>
+        <div class="example-box">
+            <strong>Automotive Engineering</strong>
+            <ul>
+                <li>Performance vs. Fuel Economy</li>
+                <li>Safety vs. Weight</li>
+                <li>Cost vs. Quality</li>
+            </ul>
+        </div>
+        <div class="example-box fragment">
+            <strong>Machine Learning</strong>
+            <ul>
+                <li>Accuracy vs. Model Complexity</li>
+                <li>Training Time vs. Performance</li>
+                <li>Interpretability vs. Accuracy</li>
+            </ul>
+        </div>
+    </section>
+</section>
+
+<!-- Section 2: Problem Formulation -->
+<section>
+    <section>
+        <h2>Multi-Objective Problem (MOP)</h2>
+        <div class="definition-box">
+            <p><strong>Mathematical Formulation:</strong></p>
+            <p>Minimize: <strong>F(x)</strong> = [f₁(x), f₂(x), ..., f<sub>m</sub>(x)]</p>
+            <p>Subject to: <strong>x</strong> ∈ X (decision space)</p>
+        </div>
+        <div class="fragment">
+            <p><strong>Where:</strong></p>
+            <ul>
+                <li><strong>x</strong>: Decision variable vector</li>
+                <li><strong>f<sub>i</sub></strong>: Individual objective functions</li>
+                <li><strong>m</strong>: Number of objectives (typically m ≥ 2)</li>
+                <li><strong>X</strong>: Feasible decision space</li>
+            </ul>
+        </div>
+    </section>
+
+    <section>
+        <h3>The Fundamental Challenge</h3>
+        <div class="key-point">
+            <strong>There is typically no single solution that optimizes all objectives simultaneously</strong>
+        </div>
+        <div class="fragment">
+            <p><strong>Why?</strong></p>
+            <ul>
+                <li class="fragment">Objectives are often <em>conflicting</em></li>
+                <li class="fragment">Improving one objective may worsen another</li>
+                <li class="fragment">Trade-offs are inevitable</li>
+            </ul>
+        </div>
+    </section>
+
+    <section>
+        <h3>Visualization: Trade-offs</h3>
+        <div class="visual-diagram">
+            <svg width="600" height="400" viewBox="0 0 600 400">
+                <!-- Axes -->
+                <line x1="50" y1="350" x2="550" y2="350" stroke="#000" stroke-width="2"/>
+                <line x1="50" y1="350" x2="50" y2="50" stroke="#000" stroke-width="2"/>
+                
+                <!-- Labels -->
+                <text x="300" y="380" text-anchor="middle" font-size="16">Objective 1 (Cost) →</text>
+                <text x="20" y="200" text-anchor="middle" font-size="16" transform="rotate(-90 20 200)">Objective 2 (Quality) →</text>
+                
+                <!-- Pareto Front Curve -->
+                <path d="M 100 100 Q 200 120, 300 180 T 500 320" fill="none" stroke="#e74c3c" stroke-width="3"/>
+                
+                <!-- Solutions on Pareto Front -->
+                <circle cx="100" cy="100" r="6" fill="#e74c3c"/>
+                <circle cx="200" cy="140" r="6" fill="#e74c3c"/>
+                <circle cx="300" cy="180" r="6" fill="#e74c3c"/>
+                <circle cx="400" cy="240" r="6" fill="#e74c3c"/>
+                <circle cx="500" cy="320" r="6" fill="#e74c3c"/>
+                
+                <!-- Dominated Solutions -->
+                <circle cx="250" cy="250" r="6" fill="#95a5a6"/>
+                <circle cx="350" cy="300" r="6" fill="#95a5a6"/>
+                
+                <!-- Legend -->
+                <circle cx="100" cy="30" r="6" fill="#e74c3c"/>
+                <text x="115" y="35" font-size="14">Pareto Optimal Solutions</text>
+                <circle cx="350" cy="30" r="6" fill="#95a5a6"/>
+                <text x="365" y="35" font-size="14">Dominated Solutions</text>
+            </svg>
+        </div>
+    </section>
+</section>
+
+<!-- Section 3: Pareto Optimality -->
+<section>
+    <section>
+        <h2>Pareto Dominance</h2>
+        <div class="definition-box">
+            <p><strong>Definition:</strong> Solution <strong>x</strong> dominates solution <strong>y</strong> (denoted x ≺ y) if and only if:</p>
+            <ol>
+                <li>x is <em>no worse</em> than y in all objectives</li>
+                <li>x is <em>strictly better</em> than y in at least one objective</li>
+            </ol>
+        </div>
+        <div class="fragment">
+            <p><strong>Formally:</strong> For minimization problems,</p>
+            <p>x ≺ y ⟺ (∀i: f<sub>i</sub>(x) ≤ f<sub>i</sub>(y)) ∧ (∃j: f<sub>j</sub>(x) < f<sub>j</sub>(y))</p>
+        </div>
+    </section>
+
+    <section>
+        <h3>Example: Comparing Solutions</h3>
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Solution</th>
+                    <th>Cost (f₁)</th>
+                    <th>Time (f₂)</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="fragment">
+                    <td><strong>A</strong></td>
+                    <td>100</td>
+                    <td>50</td>
+                    <td style="background-color: #d5f4e6;">Non-dominated</td>
+                </tr>
+                <tr class="fragment">
+                    <td><strong>B</strong></td>
+                    <td>120</td>
+                    <td>40</td>
+                    <td style="background-color: #d5f4e6;">Non-dominated</td>
+                </tr>
+                <tr class="fragment">
+                    <td><strong>C</strong></td>
+                    <td>110</td>
+                    <td>60</td>
+                    <td style="background-color: #f8d7da;">Dominated by A</td>
+                </tr>
+                <tr class="fragment">
+                    <td><strong>D</strong></td>
+                    <td>90</td>
+                    <td>55</td>
+                    <td style="background-color: #d5f4e6;">Non-dominated</td>
+                </tr>
+            </tbody>
+        </table>
+        <p class="fragment"><strong>Analysis:</strong> A dominates C because 100 < 110 AND 50 < 60</p>
+    </section>
+
+    <section>
+        <h3>Pareto Optimal Set</h3>
+        <div class="definition-box">
+            <p><strong>Pareto Optimal Solution:</strong> A solution that is not dominated by any other solution in the search space</p>
+        </div>
+        <div class="fragment">
+            <div class="definition-box">
+                <p><strong>Pareto Set (PS):</strong> The set of all Pareto optimal solutions in <em>decision space</em></p>
+                <p><strong>Pareto Front (PF):</strong> The set of objective vectors corresponding to the Pareto Set in <em>objective space</em></p>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h3>Properties of Pareto Solutions</h3>
+        <ul>
+            <li class="fragment"><strong>Non-uniqueness:</strong> Multiple Pareto optimal solutions typically exist</li>
+            <li class="fragment"><strong>Trade-off representation:</strong> Each point represents a different balance between objectives</li>
+            <li class="fragment"><strong>Equivalence:</strong> No Pareto optimal solution is objectively better than another</li>
+            <li class="fragment"><strong>Decision support:</strong> Final choice depends on decision-maker preferences</li>
+        </ul>
+    </section>
+</section>
+
+<!-- Section 4: Goals of MOO -->
+<section>
+    <section>
+        <h2>Goals of Multi-Objective Optimization</h2>
+        <div class="key-point">
+            <strong>Find a set of solutions that best approximates the true Pareto front</strong>
+        </div>
+    </section>
+
+    <section>
+        <h3>Three Critical Criteria</h3>
+        <div class="two-column">
+            <div>
+                <div class="fragment">
+                    <h4>1. Convergence</h4>
+                    <ul>
+                        <li>Solutions should be close to the true Pareto front</li>
+                        <li>Minimize distance to optimal trade-offs</li>
+                    </ul>
+                </div>
+                <div class="fragment">
+                    <h4>2. Diversity</h4>
+                    <ul>
+                        <li>Solutions should be well-distributed</li>
+                        <li>Cover the entire range of trade-offs</li>
+                    </ul>
+                </div>
+            </div>
+            <div>
+                <div class="fragment">
+                    <h4>3. Coverage</h4>
+                    <ul>
+                        <li>Explore the full extent of the Pareto front</li>
+                        <li>Avoid gaps in representation</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h3>Visual Comparison: Quality Metrics</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div>
+                <h4>Poor Diversity</h4>
+                <svg width="250" height="200" viewBox="0 0 250 200">
+                    <line x1="20" y1="180" x2="230" y2="180" stroke="#000" stroke-width="2"/>
+                    <line x1="20" y1="180" x2="20" y2="20" stroke="#000" stroke-width="2"/>
+                    <path d="M 40 40 Q 80 50, 120 80 T 220 160" fill="none" stroke="#e74c3c" stroke-width="2" stroke-dasharray="5,5"/>
+                    <circle cx="120" cy="80" r="5" fill="#3498db"/>
+                    <circle cx="125" cy="82" r="5" fill="#3498db"/>
+                    <circle cx="130" cy="85" r="5" fill="#3498db"/>
+                    <circle cx="135" cy="88" r="5" fill="#3498db"/>
+                </svg>
+            </div>
+            <div>
+                <h4>Good Diversity</h4>
+                <svg width="250" height="200" viewBox="0 0 250 200">
+                    <line x1="20" y1="180" x2="230" y2="180" stroke="#000" stroke-width="2"/>
+                    <line x1="20" y1="180" x2="20" y2="20" stroke="#000" stroke-width="2"/>
+                    <path d="M 40 40 Q 80 50, 120 80 T 220 160" fill="none" stroke="#e74c3c" stroke-width="2" stroke-dasharray="5,5"/>
+                    <circle cx="50" cy="45" r="5" fill="#27ae60"/>
+                    <circle cx="90" cy="60" r="5" fill="#27ae60"/>
+                    <circle cx="130" cy="85" r="5" fill="#27ae60"/>
+                    <circle cx="170" cy="115" r="5" fill="#27ae60"/>
+                    <circle cx="210" cy="150" r="5" fill="#27ae60"/>
+                </svg>
+            </div>
+        </div>
+    </section>
+</section>
+
+<!-- Section 5: NSGA-II Algorithm -->
+<section>
+    <section>
+        <h2>NSGA-II Algorithm</h2>
+        <div class="definition-box">
+            <strong>Non-dominated Sorting Genetic Algorithm II</strong>
+            <p>Deb et al. (2002) - Most cited multi-objective optimization algorithm</p>
+        </div>
+        <div class="fragment">
+            <p><strong>Key Innovations:</strong></p>
+            <ul>
+                <li>Fast non-dominated sorting (O(MN²))</li>
+                <li>Crowding distance for diversity</li>
+                <li>Elitist selection mechanism</li>
+            </ul>
+        </div>
+    </section>
+
+    <section>
+        <h3>NSGA-II: Main Components</h3>
+        <div style="background-color: #ecf0f1; padding: 20px; border-radius: 10px;">
+            <ol>
+                <li class="fragment"><strong>Non-dominated Sorting</strong>
+                    <ul><li>Rank solutions into fronts (Front 1, Front 2, ...)</li></ul>
+                </li>
+                <li class="fragment"><strong>Crowding Distance Calculation</strong>
+                    <ul><li>Measure spacing between solutions in objective space</li></ul>
+                </li>
+                <li class="fragment"><strong>Selection Mechanism</strong>
+                    <ul><li>Prefer: lower rank, then higher crowding distance</li></ul>
+                </li>
+                <li class="fragment"><strong>Genetic Operators</strong>
+                    <ul><li>Standard crossover and mutation</li></ul>
+                </li>
+            </ol>
+        </div>
+    </section>
+
+    <section>
+        <h3>Non-Dominated Sorting</h3>
+        <div class="example-box">
+            <p><strong>Concept:</strong> Organize solutions into hierarchical fronts</p>
+            <ul>
+                <li><strong>Front 1:</strong> Non-dominated solutions (best rank)</li>
+                <li><strong>Front 2:</strong> Solutions dominated only by Front 1</li>
+                <li><strong>Front 3:</strong> Solutions dominated only by Fronts 1 & 2</li>
+                <li>And so on...</li>
+            </ul>
+        </div>
+    </section>
+
+    <section>
+        <h3>Crowding Distance</h3>
+        <div class="definition-box">
+            <p><strong>Purpose:</strong> Maintain diversity by favoring solutions in less crowded regions</p>
+        </div>
+        <div class="fragment">
+            <svg width="600" height="300" viewBox="0 0 600 300">
+                <!-- Axes -->
+                <line x1="50" y1="250" x2="550" y2="250" stroke="#000" stroke-width="2"/>
+                <line x1="50" y1="250" x2="50" y2="50" stroke="#000" stroke-width="2"/>
+                
+                <!-- Solutions -->
+                <circle cx="100" cy="100" r="6" fill="#e74c3c"/>
+                <circle cx="200" cy="130" r="6" fill="#e74c3c"/>
+                <circle cx="300" cy="160" r="6" fill="#3498db"/>
+                <circle cx="400" cy="190" r="6" fill="#e74c3c"/>
+                <circle cx="500" cy="220" r="6" fill="#e74c3c"/>
+                
+                <!-- Crowding distance box -->
+                <rect x="200" y="100" width="200" height="120" fill="none" stroke="#27ae60" stroke-width="2" stroke-dasharray="5,5"/>
+                <text x="300" y="270" text-anchor="middle" font-size="14" fill="#27ae60">Crowding Distance</text>
+                
+                <!-- Boundary points -->
+                <circle cx="100" cy="100" r="8" fill="none" stroke="#f39c12" stroke-width="3"/>
+                <circle cx="500" cy="220" r="8" fill="none" stroke="#f39c12" stroke-width="3"/>
+                <text x="100" y="90" text-anchor="middle" font-size="12">∞</text>
+                <text x="500" y="240" text-anchor="middle" font-size="12">∞</text>
+            </svg>
+        </div>
+        <p class="fragment"><strong>Calculation:</strong> Sum of normalized distances to neighboring solutions in each objective</p>
+    </section>
+
+    <section>
+        <h3>NSGA-II: Algorithm Flow</h3>
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px;">
+            <ol style="line-height: 2;">
+                <li class="fragment">Initialize population P₀ (size N)</li>
+                <li class="fragment">For each generation t:
+                    <ul>
+                        <li>Create offspring Q<sub>t</sub> from P<sub>t</sub> (size N)</li>
+                        <li>Combine: R<sub>t</sub> = P<sub>t</sub> ∪ Q<sub>t</sub> (size 2N)</li>
+                        <li>Perform non-dominated sorting on R<sub>t</sub></li>
+                        <li>Calculate crowding distance for each front</li>
+                        <li>Select best N individuals for P<sub>t+1</sub></li>
+                    </ul>
+                </li>
+                <li class="fragment">Return final non-dominated front</li>
+            </ol>
+        </div>
+    </section>
+
+    <section>
+        <h3>Selection Strategy</h3>
+        <div class="key-point">
+            <strong>Binary Tournament Selection</strong>
+        </div>
+        <div class="fragment">
+            <p><strong>Comparison Rules:</strong></p>
+            <ol>
+                <li>If solutions have different ranks → Select solution with better (lower) rank</li>
+                <li>If solutions have same rank → Select solution with larger crowding distance</li>
+            </ol>
+        </div>
+        <div class="fragment">
+            <p><strong>Why?</strong></p>
+            <ul>
+                <li>Rank promotes convergence to Pareto front</li>
+                <li>Crowding distance promotes diversity along front</li>
+            </ul>
+        </div>
+    </section>
+</section>
+
+<!-- Section 6: Other MOO Algorithms -->
+<section>
+    <section>
+        <h2>Alternative Approaches</h2>
+        <p>Multiple algorithmic paradigms for multi-objective optimization</p>
+    </section>
+
+    <section>
+        <h3>SPEA2: Strength Pareto EA</h3>
+        <div class="definition-box">
+            <p><strong>Strength Pareto Evolutionary Algorithm 2</strong> (Zitzler et al., 2001)</p>
+        </div>
+        <div class="fragment">
+            <p><strong>Key Features:</strong></p>
+            <ul>
+                <li>External archive of non-dominated solutions</li>
+                <li>Fitness = Strength + Density
+                    <ul>
+                        <li><strong>Strength:</strong> Number of solutions an individual dominates</li>
+                        <li><strong>Density:</strong> k-nearest neighbor distance</li>
+                    </ul>
+                </li>
+                <li>Archive truncation based on proximity</li>
+            </ul>
+        </div>
+    </section>
+
+    <section>
+        <h3>MOEA/D: Decomposition Approach</h3>
+        <div class="definition-box">
+            <p><strong>Multi-Objective Evolutionary Algorithm based on Decomposition</strong> (Zhang & Li, 2007)</p>
+        </div>
+        <div class="fragment">
+            <p><strong>Core Idea:</strong> Decompose MOP into multiple scalar optimization subproblems</p>
+        </div>
+        <div class="fragment">
+            <p><strong>Scalarization Functions:</strong></p>
+            <table class="comparison-table">
+                <tr>
+                    <td><strong>Weighted Sum</strong></td>
+                    <td>g(x|w) = Σ w<sub>i</sub> · f<sub>i</sub>(x)</td>
+                </tr>
+                <tr>
+                    <td><strong>Tchebycheff</strong></td>
+                    <td>g(x|w,z*) = max{w<sub>i</sub> · |f<sub>i</sub>(x) - z<sub>i</sub>*|}</td>
+                </tr>
+            </table>
+        </div>
+    </section>
+
+    <section>
+        <h3>MOEA/D: Workflow</h3>
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px;">
+            <ol>
+                <li class="fragment">Generate set of weight vectors (uniformly distributed)</li>
+                <li class="fragment">Each weight vector defines one subproblem</li>
+                <li class="fragment">Define neighborhood for each subproblem</li>
+                <li class="fragment">Optimize subproblems collaboratively:
+                    <ul>
+                        <li>Select parents from neighborhood</li>
+                        <li>Generate offspring</li>
+                        <li>Update neighboring solutions</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+        <p class="fragment"><strong>Advantage:</strong> Effective for problems with regular Pareto fronts</p>
+    </section>
+
+    <section>
+        <h3>Comparison of Approaches</h3>
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Algorithm</th>
+                    <th>Main Mechanism</th>
+                    <th>Best For</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>NSGA-II</strong></td>
+                    <td>Ranking + Crowding</td>
+                    <td>General-purpose, 2-3 objectives</td>
+                </tr>
+                <tr>
+                    <td><strong>SPEA2</strong></td>
+                    <td>Strength + Archive</td>
+                    <td>Small populations, 2-3 objectives</td>
+                </tr>
+                <tr>
+                    <td><strong>MOEA/D</strong></td>
+                    <td>Decomposition</td>
+                    <td>Regular fronts, continuous problems</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+</section>
+
+<!-- Section 7: Many-Objective Optimization -->
+<section>
+    <section>
+        <h2>Many-Objective Optimization</h2>
+        <div class="key-point">
+            <strong>When m > 3:</strong> New challenges emerge
+        </div>
+    </section>
+
+    <section>
+        <h3>Challenges with Many Objectives</h3>
+        <div class="two-column">
+            <div>
+                <h4>Problem 1: Loss of Selection Pressure</h4>
+                <ul class="fragment">
+                    <li>Most solutions become non-dominated</li>
+                    <li>Harder to distinguish quality</li>
+                    <li>Slower convergence</li>
+                </ul>
+            </div>
+            <div>
+                <h4>Problem 2: Exponential Growth</h4>
+                <ul class="fragment">
+                    <li>Pareto front size grows exponentially</li>
+                    <li>Computational cost increases</li>
+                    <li>Visualization becomes impossible</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h3>Solutions for Many Objectives</h3>
+        <div class="example-box">
+            <h4>1. Reference Point Methods (NSGA-III)</h4>
+            <ul>
+                <li>Use predefined reference points on hyperplane</li>
+                <li>Associate solutions with reference points</li>
+                <li>Maintain diversity through reference point distribution</li>
+            </ul>
+        </div>
+        <div class="example-box fragment">
+            <h4>2. Indicator-Based Selection</h4>
+            <ul>
+                <li>Use quality indicators (e.g., hypervolume) directly in selection</li>
+                <li>Stronger selection pressure</li>
+                <li>Examples: SMS-EMOA, IBEA</li>
+            </ul>
+        </div>
+    </section>
+</section>
+
+<!-- Section 8: Performance Assessment -->
+<section>
+    <section>
+        <h2>Evaluating Multi-Objective Algorithms</h2>
+        <p><strong>Challenge:</strong> How do we measure quality of a solution set?</p>
+    </section>
+
+    <section>
+        <h3>Performance Indicators</h3>
+        <div class="definition-box">
+            <h4>1. Hypervolume (HV)</h4>
+            <p>Volume of objective space dominated by solution set, bounded by reference point</p>
+            <ul>
+                <li>✓ Captures both convergence and diversity</li>
+                <li>✓ Widely accepted as best single indicator</li>
+                <li>✗ Computationally expensive for many objectives</li>
+            </ul>
+        </div>
+    </section>
+
+    <section>
+        <h3>Hypervolume Visualization</h3>
+        <div class="visual-diagram">
+            <svg width="500" height="350" viewBox="0 0 500 350">
+                <!-- Axes -->
+                <line x1="50" y1="300" x2="450" y2="300" stroke="#000" stroke-width="2"/>
+                <line x1="50" y1="300" x2="50" y2="50" stroke="#000" stroke-width="2"/>
+                
+                <!-- Reference point -->
+                <circle cx="400" cy="250" r="8" fill="#e74c3c"/>
+                <text x="410" y="255" font-size="14">Reference Point</text>
+                
+                <!-- Solutions -->
+                <circle cx="100" cy="100" r="6" fill="#3498db"/>
+                <circle cx="150" cy="130" r="6" fill="#3498db"/>
+                <circle cx="200" cy="160" r="6" fill="#3498db"/>
+                <circle cx="250" cy="190" r="6" fill="#3498db"/>
+                
+                <!-- Dominated volume (shaded) -->
+                <path d="M 100 100 L 100 300 L 150 300 L 150 130 L 200 130 L 200 160 L 250 160 L 250 190 L 400 190 L 400 250 L 250 250 L 250 300 L 400 300 L 400 250" fill="#3498db" opacity="0.3"/>
+                
+                <text x="250" y="320" text-anchor="middle" font-size="14">f₁ (minimize)</text>
+                <text x="30" y="175" text-anchor="middle" font-size="14" transform="rotate(-90 30 175)">f₂ (minimize)</text>
+                
+                <text x="250" y="220" text-anchor="middle" font-size="16" fill="#2c3e50" font-weight="bold">Hypervolume</text>
+            </svg>
+        </div>
+    </section>
+
+    <section>
+        <h3>Other Key Indicators</h3>
+        <div class="definition-box">
+            <h4>2. Inverted Generational Distance (IGD)</h4>
+            <p>Average distance from true Pareto front to obtained front</p>
+            <ul>
+                <li>✓ Measures both convergence and diversity</li>
+                <li>✗ Requires knowledge of true Pareto front</li>
+            </ul>
+        </div>
+        <div class="definition-box fragment">
+            <h4>3. Spacing (S)</h4>
+            <p>Standard deviation of distances between consecutive solutions</p>
+            <ul>
+                <li>✓ Simple measure of uniformity</li>
+                <li>✗ Doesn't capture convergence</li>
+            </ul>
+        </div>
+    </section>
+
+    <section>
+        <h3>Experimental Methodology</h3>
+        <div class="key-point">
+            <strong>Proper evaluation requires:</strong>
+        </div>
+        <ol>
+            <li class="fragment">Multiple independent runs (typically 20-30)</li>
+            <li class="fragment">Statistical significance testing</li>
+            <li class="fragment">Multiple benchmark problems</li>
+            <li class="fragment">Multiple performance indicators</li>
+            <li class="fragment">Visual inspection of Pareto fronts</li>
+        </ol>
+    </section>
+</section>
+
+<!-- Section 9: Real-World Applications -->
+<section>
+    <section>
+        <h2>Real-World Applications</h2>
+        <p>Multi-objective optimization in practice</p>
+    </section>
+
+    <section>
+        <h3>Engineering Design: Aircraft Wing</h3>
+        <div class="example-box">
+            <p><strong>Objectives:</strong></p>
+            <ul>
+                <li>Minimize: Drag coefficient</li>
+                <li>Maximize: Lift coefficient</li>
+                <li>Minimize: Structural weight</li>
+                <li>Minimize: Manufacturing cost</li>
+            </ul>
+        </div>
+        <div class="fragment">
+            <p><strong>Variables:</strong> Wing shape parameters (20-50 dimensions)</p>
+            <p><strong>Outcome:</strong> Set of wing designs representing different trade-offs for decision-makers to choose from</p>
+        </div>
+    </section>
+
+    <section>
+        <h3>Neural Architecture Search</h3>
+        <div class="example-box">
+            <p><strong>Objectives:</strong></p>
+            <ul>
+                <li>Maximize: Model accuracy</li>
+                <li>Minimize: Model size (parameters)</li>
+                <li>Minimize: Inference time</li>
+                <li>Minimize: Training cost</li>
+            </ul>
+        </div>
+        <div class="fragment">
+            <p><strong>Why Multi-Objective?</strong></p>
+            <ul>
+                <li>Different deployment scenarios have different priorities</li>
+                <li>Mobile vs. cloud deployment</li>
+                <li>Real-time vs. batch processing</li>
+            </ul>
+        </div>
+    </section>
+
+    <section>
+        <h3>Sustainable Energy Systems</h3>
+        <div class="example-box">
+            <p><strong>Objectives:</strong></p>
+            <ul>
+                <li>Minimize: Total cost</li>
+                <li>Minimize: CO₂ emissions</li>
+                <li>Maximize: Reliability/uptime</li>
+                <li>Minimize: Land use</li>
+            </ul>
+        </div>
+        <div class="fragment">
+            <p><strong>Decision Variables:</strong></p>
+            <ul>
+                <li>Mix of energy sources (solar, wind, hydro, etc.)</li>
+                <li>Capacity of each source</li>
+                <li>Storage system configuration</li>
+            </ul>
+        </div>
+    </section>
+</section>
+
+<!-- Section 10: Practical Considerations -->
+<section>
+    <section>
+        <h2>Practical Guidelines</h2>
+        <p>Making multi-objective optimization work</p>
+    </section>
+
+    <section>
+        <h3>Choosing an Algorithm</h3>
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Scenario</th>
+                    <th>Recommended Algorithm</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>2-3 objectives, general problem</td>
+                    <td><strong>NSGA-II</strong></td>
+                </tr>
+                <tr>
+                    <td>Complex, irregular Pareto front</td>
+                    <td><strong>NSGA-II or SPEA2</strong></td>
+                </tr>
+                <tr>
+                    <td>Regular front, continuous variables</td>
+                    <td><strong>MOEA/D</strong></td>
+                </tr>
+                <tr>
+                    <td>4+ objectives</td>
+                    <td><strong>NSGA-III or MOEA/D</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section>
+        <h3>Parameter Settings</h3>
+        <div class="definition-box">
+            <h4>Typical Recommendations:</h4>
+            <ul>
+                <li><strong>Population size:</strong> 100-200 for 2-3 objectives</li>
+                <li><strong>Generations:</strong> Problem-dependent (often 200-500)</li>
+                <li><strong>Crossover rate:</strong> 0.8-0.9</li>
+                <li><strong>Mutation rate:</strong> 1/n (n = number of variables)</li>
+            </ul>
+        </div>
+        <div class="fragment">
+            <div class="key-point">
+                <strong>Rule of thumb:</strong> For m objectives, use population size ≥ 10m
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h3>Common Pitfalls to Avoid</h3>
+        <ul>
+            <li class="fragment">❌ Using single-objective thinking
+                <ul><li>✓ Embrace the concept of trade-offs</li></ul>
+            </li>
+            <li class="fragment">❌ Ignoring diversity maintenance
+                <ul><li>✓ Monitor spread of solutions</li></ul>
+            </li>
+            <li class="fragment">❌ Evaluating with single metric only
+                <ul><li>✓ Use multiple indicators + visualization</li></ul>
+            </li>
+            <li class="fragment">❌ Running single experiment
+                <ul><li>✓ Multiple runs + statistical testing</li></ul>
+            </li>
+            <li class="fragment">❌ Scaling issues with objectives
+                <ul><li>✓ Normalize objective values</li></ul>
+            </li>
+        </ul>
+    </section>
+</section>
+
+<!-- Section 11: Decision Making -->
+<section>
+    <section>
+        <h2>Decision Making from Pareto Set</h2>
+        <p><strong>After optimization:</strong> How to choose a single solution?</p>
+    </section>
+
+    <section>
+        <h3>A Posteriori Methods</h3>
+        <div class="definition-box">
+            <p><strong>Approach:</strong> First find Pareto front, then let decision-maker choose</p>
+        </div>
+        <div class="fragment">
+            <p><strong>Advantages:</strong></p>
+            <ul>
+                <li>Decision-maker sees all trade-offs</li>
+                <li>No preference information needed a priori</li>
+                <li>Most flexible approach</li>
+            </ul>
+        </div>
+        <div class="fragment">
+            <p><strong>Tools for Decision Support:</strong></p>
+            <ul>
+                <li>Visual Pareto front exploration</li>
+                <li>Interactive filtering</li>
+                <li>Parallel coordinates plots</li>
+            </ul>
+        </div>
+    </section>
+
+    <section>
+        <h3>Preference Articulation</h3>
+        <div class="example-box">
+            <h4>A Priori (Before Optimization)</h4>
+            <ul>
+                <li>Specify objective weights</li>
+                <li>Define aspiration levels</li>
+                <li>→ Guides search toward preferred region</li>
+            </ul>
+        </div>
+        <div class="example-box fragment">
+            <h4>Interactive (During Optimization)</h4>
+            <ul>
+                <li>Provide feedback during search</li>
+                <li>Progressively refine preferences</li>
+                <li>→ Adaptive focus on interesting regions</li>
+            </ul>
+        </div>
+    </section>
+</section>
+
+<!-- Section 12: Software Tools -->
+<section>
+    <section>
+        <h2>Software Libraries</h2>
+        <p>Implementing multi-objective optimization</p>
+    </section>
+
+    <section>
+        <h3>Available Frameworks</h3>
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Library</th>
+                    <th>Language</th>
+                    <th>Algorithms</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>pymoo</strong></td>
+                    <td>Python</td>
+                    <td>NSGA-II, NSGA-III, MOEA/D, and many more</td>
+                </tr>
+                <tr>
+                    <td><strong>PlatEMO</strong></td>
+                    <td>MATLAB</td>
+                    <td>100+ MOEAs with GUI</td>
+                </tr>
+                <tr>
+                    <td><strong>jMetal</strong></td>
+                    <td>Java</td>
+                    <td>Comprehensive framework</td>
+                </tr>
+                <tr>
+                    <td><strong>DEAP</strong></td>
+                    <td>Python</td>
+                    <td>Flexible EA framework</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+</section>
+
+<!-- Section 13: Key Takeaways -->
+<section>
+    <section>
+        <h2>Key Takeaways</h2>
+    </section>
+
+    <section>
+        <h3>Fundamental Concepts</h3>
+        <ol>
+            <li class="fragment">Real-world problems often involve <strong>multiple conflicting objectives</strong></li>
+            <li class="fragment">No single optimal solution exists → seek <strong>Pareto optimal set</strong></li>
+            <li class="fragment"><strong>Pareto dominance</strong> defines solution quality</li>
+            <li class="fragment">Success requires balance of <strong>convergence and diversity</strong></li>
+        </ol>
+    </section>
+
+    <section>
+        <h3>Algorithmic Insights</h3>
+        <ol>
+            <li class="fragment"><strong>NSGA-II</strong> is the standard starting point (2-3 objectives)</li>
+            <li class="fragment">Ranking + crowding distance = effective combination</li>
+            <li class="fragment"><strong>MOEA/D</strong> excels with regular Pareto fronts</li>
+            <li class="fragment">Many-objective problems (m > 3) require specialized methods</li>
+        </ol>
+    </section>
+
+    <section>
+        <h3>Practical Recommendations</h3>
+        <div class="key-point">
+            <strong>For successful application:</strong>
+        </div>
+        <ul>
+            <li class="fragment">Choose algorithm based on problem characteristics</li>
+            <li class="fragment">Use multiple performance indicators</li>
+            <li class="fragment">Always visualize results</li>
+            <li class="fragment">Conduct proper statistical evaluation</li>
+            <li class="fragment">Involve decision-makers early in process</li>
+        </ul>
+    </section>
+</section>
+
+<!-- Section 14: Further Study -->
+<section>
+    <section>
+        <h2>Continuing Your Learning</h2>
+    </section>
+
+    <section>
+        <h3>Essential Reading</h3>
+        <div class="definition-box">
+            <h4>Foundational Papers</h4>
+            <ul>
+                <li>Deb et al. (2002): "A Fast and Elitist Multiobjective Genetic Algorithm: NSGA-II"</li>
+                <li>Zhang & Li (2007): "MOEA/D: A Multiobjective Evolutionary Algorithm Based on Decomposition"</li>
+            </ul>
+        </div>
+        <div class="definition-box fragment">
+            <h4>Books</h4>
+            <ul>
+                <li>Deb (2001): "Multi-Objective Optimization Using Evolutionary Algorithms"</li>
+                <li>Coello et al. (2007): "Evolutionary Algorithms for Solving Multi-Objective Problems"</li>
+            </ul>
+        </div>
+    </section>
+
+    <section>
+        <h3>Hands-On Practice</h3>
+        <div class="example-box">
+            <h4>Suggested Exercise</h4>
+            <p><strong>ZDT1 Benchmark Problem:</strong></p>
+            <ol>
+                <li>Implement NSGA-II from scratch</li>
+                <li>Test on ZDT1 (2 objectives, 30 variables)</li>
+                <li>Visualize convergence to Pareto front</li>
+                <li>Calculate hypervolume over generations</li>
+                <li>Compare with library implementation</li>
+            </ol>
+        </div>
+    </section>
+
+    <section>
+        <h3>Next Topics</h3>
+        <ul>
+            <li class="fragment"><strong>Constraint handling</strong> in multi-objective problems</li>
+            <li class="fragment"><strong>Dynamic</strong> multi-objective optimization</li>
+            <li class="fragment"><strong>Robust</strong> multi-objective optimization</li>
+            <li class="fragment"><strong>Preference-based</strong> methods</li>
+            <li class="fragment"><strong>Multi-level</strong> and <strong>multi-scale</strong> optimization</li>
+        </ul>
+    </section>
+</section>
+
+<!-- Final Slide -->
+<section>
+    <h1>Thank You!</h1>
+    <h3>Questions?</h3>
+    <div style="margin-top: 50px;">
+        <p><em>Next Lecture: Constraint Handling in Evolutionary Algorithms</em></p>
+    </div>
+</section>
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.js"></script>
+    <script>
+        Reveal.initialize({
+            hash: true,
+            slideNumber: true,
+            transition: 'slide',
+            transitionSpeed: 'default',
+            backgroundTransition: 'fade',
+            center: true,
+            width: 1200,
+            height: 700,
+            margin: 0.04,
+            controls: true,
+            progress: true,
+            keyboard: true,
+            touch: true,
+            loop: false,
+            fragments: true
+        });
+    </script>
+</body>
+</html>
