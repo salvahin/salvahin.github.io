@@ -5,4 +5,4 @@ inline: true
 related_posts: false
 ---
 
-Participated as panelist at **Bosch FitFest 2023** discussing Artificial Intelligence applied to software testing, alongside Sergio Jair Martín Alvarez, Jose Luis Anaya Bernal, and Armando Ramirez. [(LinkedIn)](https://www.linkedin.com/feed/update/urn:li:activity:7047751779077263360)
+Participated as panelist at **Bosch FitFest 2023** discussing Artificial Intelligence applied to software testing, alongside Sergio Jair Martín Alvarez, Jose Luis Anaya Bernal, and Armando Ramirez. [Read more →](/blog/2023/bosch-fitfest-ai-testing/) · [(LinkedIn)](https://www.linkedin.com/feed/update/urn:li:activity:7047751779077263360)
