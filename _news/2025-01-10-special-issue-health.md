@@ -5,4 +5,4 @@ inline: true
 related_posts: false
 ---
 
-Serving as Guest Editor for the Special Issue **"Innovations in Artificial Intelligence for Medicine and Healthcare"** in Health Information Science and Systems (Springer). Co-editors: Sharib Ali, Christian Mata, Lucía Prieto Santamaría, Enrique Garcia Ceja, and Estefanía Talavera.
+Serving as Guest Editor for the Special Issue **"Innovations in Artificial Intelligence for Medicine and Healthcare"** in Health Information Science and Systems (Springer). Co-editors: Sharib Ali, Christian Mata, Lucía Prieto Santamaría, Enrique Garcia Ceja, and Estefanía Talavera. [(LinkedIn)](https://www.linkedin.com/posts/gilberto-ochoa-ruiz-a7b24511_special-issue-on-innovations-in-artificial-activity-7283516806680526849-atLy)

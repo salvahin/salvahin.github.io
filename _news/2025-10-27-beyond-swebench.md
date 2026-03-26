@@ -5,4 +5,4 @@ inline: true
 related_posts: false
 ---
 
-Paper **"Beyond SWE-Bench: A Compiler-Assisted Pipeline for Multi-language Automated Program Repair"** published at **MICAI 2025**. Team: Moises Pineda, Diego Luna, Mariana Esquivel, Juan Salazar, with Prof. Daniel Flores Araiza.
+Paper **"Beyond SWE-Bench: A Compiler-Assisted Pipeline for Multi-language Automated Program Repair"** published at **MICAI 2025**. Team: Moises Pineda, Diego Luna, Mariana Esquivel, Juan Salazar, with Prof. Daniel Flores Araiza. [(LinkedIn)](https://www.linkedin.com/posts/salvahin_beyond-swe-bench-a-compiler-assisted-pipeline-activity-7388628888114978817-t417)
