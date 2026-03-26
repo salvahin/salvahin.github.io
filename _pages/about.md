@@ -2,7 +2,7 @@
 layout: about
 title: about
 permalink: /
-subtitle: <a href='#'>Tecnológico de Monterrey</a>. 
+subtitle: <a href='https://ai-research.tec.mx/en/us'>Tecnológico de Monterrey</a>. 
 
 profile:
   align: right
