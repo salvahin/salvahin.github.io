@@ -1,0 +1,912 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1024">
+  <title>TritonBench-T on Modal — Walkthrough</title>
+
+  <!-- reveal.js core + a clean built-in theme -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+  <!-- syntax highlighting -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/monokai.css">
+
+  <style>
+    :root {
+      --brand: #1e3a8a;
+      --brand-soft: #3b82f6;
+      --accent: #f97316;
+      --ink: #0f172a;
+      --muted: #475569;
+      --bg-soft: #f1f5f9;
+      --good: #16a34a;
+      --bad:  #dc2626;
+    }
+
+    .reveal { font-family: "Inter", "Segoe UI", system-ui, sans-serif; color: var(--ink); }
+    .reveal h1, .reveal h2, .reveal h3, .reveal h4 { color: var(--brand); font-weight: 700; letter-spacing: -.01em; }
+    .reveal h1 { font-size: 2.4em; }
+    .reveal h2 { font-size: 1.7em; margin-bottom: .4em; }
+    .reveal h3 { font-size: 1.25em; }
+    .reveal p, .reveal li { color: var(--ink); line-height: 1.45; }
+    .reveal a { color: var(--brand-soft); }
+    .reveal pre { box-shadow: 0 6px 30px rgba(15,23,42,.12); border-radius: 8px; font-size: .55em; }
+    .reveal code { font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace; }
+    .reveal section.title-slide { text-align: left; }
+    .reveal .muted { color: var(--muted); }
+    .reveal .small { font-size: .7em; }
+    .reveal .tiny  { font-size: .55em; }
+    .reveal .pill {
+      display: inline-block; padding: .2em .7em; border-radius: 999px;
+      background: var(--brand); color: #fff; font-size: .65em; letter-spacing: .04em; text-transform: uppercase;
+    }
+    .reveal .pill.accent { background: var(--accent); }
+    .reveal .pill.outline { background: transparent; color: var(--brand); border: 1px solid var(--brand); }
+    .reveal .grid {
+      display: grid; gap: 1em; align-items: stretch;
+    }
+    .reveal .grid.cols-2 { grid-template-columns: 1fr 1fr; }
+    .reveal .grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .reveal .card {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+      padding: 1em 1.1em; box-shadow: 0 4px 18px rgba(15,23,42,.06); text-align: left;
+    }
+    .reveal .card h3 { margin-top: 0; }
+    .reveal .card.brand { border-color: var(--brand); }
+    .reveal .card.accent { border-color: var(--accent); }
+    .reveal .kbd {
+      display: inline-block; border: 1px solid #cbd5e1; border-bottom-width: 2px;
+      border-radius: 5px; padding: 0 .4em; font-family: monospace; font-size: .8em;
+      background: #f8fafc; color: var(--ink);
+    }
+    .reveal .pipeline { display: flex; gap: .6em; align-items: stretch; justify-content: center; flex-wrap: wrap; }
+    .reveal .pipeline .step {
+      background: #fff; border: 1px solid #cbd5e1; border-radius: 10px;
+      padding: .8em 1em; min-width: 9em; text-align: left;
+      box-shadow: 0 2px 10px rgba(15,23,42,.05);
+    }
+    .reveal .pipeline .step .label { font-size: .55em; text-transform: uppercase; color: var(--muted); letter-spacing: .08em; }
+    .reveal .pipeline .step .name { font-weight: 700; color: var(--brand); font-size: .9em; }
+    .reveal .pipeline .arrow { align-self: center; color: var(--accent); font-size: 1.6em; }
+    .reveal .pipeline .step.green { border-color: var(--good); }
+    .reveal .pipeline .step.red { border-color: var(--bad); }
+
+    /* flip card */
+    .flip { perspective: 1200px; width: 100%; height: 380px; }
+    .flip .inner { position: relative; width: 100%; height: 100%; transition: transform .6s; transform-style: preserve-3d; }
+    .flip.flipped .inner { transform: rotateY(180deg); }
+    .flip .face {
+      position: absolute; inset: 0; backface-visibility: hidden;
+      border-radius: 12px; padding: 1em; background: #fff;
+      box-shadow: 0 6px 30px rgba(15,23,42,.12); overflow: hidden;
+    }
+    .flip .back { transform: rotateY(180deg); }
+    .flip pre { margin: 0; height: 100%; overflow: auto; box-shadow: none; }
+    .flip-controls { margin-top: .6em; }
+    .flip-controls button {
+      background: var(--brand); color: #fff; border: none; padding: .5em 1em;
+      border-radius: 8px; font-weight: 600; cursor: pointer; font-size: .55em;
+    }
+    .flip-controls button:hover { background: var(--brand-soft); }
+
+    /* cost calculator */
+    .calc {
+      background: var(--bg-soft); border-radius: 12px; padding: 1em 1.4em;
+      display: grid; grid-template-columns: repeat(3, 1fr) auto; gap: 1em; align-items: end;
+      text-align: left;
+    }
+    .calc label { display: block; font-size: .55em; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+    .calc input, .calc select {
+      width: 100%; padding: .5em .6em; border: 1px solid #cbd5e1; border-radius: 8px;
+      font-size: .65em; font-family: inherit;
+    }
+    .calc-result {
+      grid-column: 1 / -1; padding: .8em; border-radius: 10px; background: #fff;
+      border: 1px solid #cbd5e1; text-align: center; font-size: .75em;
+    }
+    .calc-result strong { color: var(--brand); font-size: 1.4em; }
+
+    /* quiz */
+    .quiz { text-align: left; }
+    .quiz .q { font-weight: 600; margin-bottom: .5em; color: var(--brand); }
+    .quiz .opt {
+      display: block; width: 100%; text-align: left; margin: .35em 0;
+      padding: .6em .8em; border: 1px solid #cbd5e1; border-radius: 8px;
+      background: #fff; cursor: pointer; font-size: .65em; font-family: inherit;
+      transition: all .15s;
+    }
+    .quiz .opt:hover { border-color: var(--brand-soft); background: #eff6ff; }
+    .quiz .opt.right { background: #dcfce7; border-color: var(--good); color: #14532d; }
+    .quiz .opt.wrong { background: #fee2e2; border-color: var(--bad); color: #7f1d1d; }
+    .quiz .feedback { margin-top: .6em; font-size: .65em; min-height: 1.2em; color: var(--muted); }
+
+    /* table-style summary */
+    .reveal table.summary { font-size: .65em; border-collapse: collapse; margin: .5em auto; }
+    .reveal table.summary th, .reveal table.summary td {
+      padding: .35em .8em; border-bottom: 1px solid #e2e8f0; text-align: left;
+    }
+    .reveal table.summary th { color: var(--muted); font-weight: 600; }
+
+    .footer-note { position: absolute; bottom: 12px; right: 18px; font-size: .55em; color: var(--muted); }
+
+    /* Click-to-define jargon terms */
+    .reveal .term {
+      border-bottom: 1.5px dotted var(--brand-soft);
+      cursor: help;
+      position: relative;
+      color: var(--brand);
+      font-weight: 600;
+      transition: background .15s, border-bottom-style .15s;
+    }
+    .reveal .term:hover {
+      background: rgba(59, 130, 246, .10);
+      border-bottom-style: solid;
+    }
+    .reveal .term.active {
+      background: rgba(249, 115, 22, .18);
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .reveal .term::after {
+      content: 'i';
+      display: inline-block;
+      font-family: Georgia, serif;
+      font-style: italic;
+      font-size: .55em;
+      vertical-align: super;
+      margin-left: .15em;
+      color: var(--brand-soft);
+    }
+    .reveal .term.active::after { color: var(--accent); }
+
+    .term-popover {
+      position: absolute;
+      z-index: 1000;
+      top: calc(100% + 10px);
+      left: 0;
+      background: #fff;
+      border: 1.5px solid var(--brand);
+      border-radius: 10px;
+      padding: .8em 1em;
+      box-shadow: 0 12px 32px rgba(15, 23, 42, .25);
+      width: 360px;
+      max-width: 80vw;
+      font-size: .55em;
+      font-weight: 400;
+      color: var(--ink);
+      line-height: 1.5;
+      text-align: left;
+      cursor: auto;
+      animation: pop-in .18s ease-out;
+    }
+    .term-popover.right-aligned { left: auto; right: 0; }
+    .term-popover::before {
+      content: '';
+      position: absolute;
+      top: -9px;
+      left: 18px;
+      width: 0; height: 0;
+      border-left: 9px solid transparent;
+      border-right: 9px solid transparent;
+      border-bottom: 9px solid var(--brand);
+    }
+    .term-popover.right-aligned::before { left: auto; right: 18px; }
+    .term-popover .label {
+      display: block;
+      font-size: .85em;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: .35em;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    .term-popover .close {
+      position: absolute; top: .35em; right: .55em;
+      background: none; border: none;
+      color: var(--muted); cursor: pointer;
+      font-size: 1.1em; line-height: 1;
+    }
+    .term-popover .close:hover { color: var(--ink); }
+    @keyframes pop-in {
+      from { opacity: 0; transform: translateY(-4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Glossary chip on title slide */
+    .reveal .glossary-hint {
+      display: inline-block;
+      font-size: .6em; color: var(--muted);
+      margin-top: .4em;
+    }
+    .reveal .glossary-hint .term { font-size: 1em; font-weight: 600; }
+  </style>
+</head>
+
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- ========================= 1. TITLE ========================= -->
+<section class="title-slide">
+  <span class="pill">Bench &amp; Eval · Class workshop</span>
+  <h1 style="margin-top:.4em;">TritonBench-T on Modal</h1>
+  <h3 class="muted" style="margin-top:0;">Translating PyTorch → Triton with LLMs,<br>then measuring what survives a real GPU.</h3>
+  <p class="small muted" style="margin-top:1.5em;">
+    Use <span class="kbd">→</span> / <span class="kbd">Space</span> to advance ·
+    <span class="kbd">Esc</span> for an overview ·
+    <span class="kbd">S</span> for speaker notes
+  </p>
+  <p class="glossary-hint">
+    Hint: any <span class="term" data-def="Throughout the deck, words with this dotted underline are jargon you can click to see a one-paragraph definition. Click outside (or change slides) to dismiss." data-label="Click to learn">underlined word</span> in the deck has a click-to-reveal definition.
+  </p>
+  <aside class="notes">
+    Welcome. In ~30 minutes we'll cover what TritonBench is, why we evaluate LLM-written
+    Triton kernels, how the three eval phases work, and how the Modal-based project we
+    distribute orchestrates everything on a $0.59/hr GPU.
+  </aside>
+</section>
+
+<!-- ========================= 2. WHY ========================= -->
+<section>
+  <h2>Why this exists</h2>
+  <div class="grid cols-3" style="gap:.7em;">
+    <div class="card brand" style="padding:.8em 1em;">
+      <h3 style="font-size:1.1em; margin:0 0 .3em;">The premise</h3>
+      <p class="small" style="margin:0;">Triton lets you write GPU kernels in Python. LLMs can <em>maybe</em> write them. Question: how well, and on which kinds of operators?</p>
+    </div>
+    <div class="card" style="padding:.8em 1em;">
+      <h3 style="font-size:1.1em; margin:0 0 .3em;">The benchmark</h3>
+      <p class="small" style="margin:0;"><strong>TritonBench</strong> (THUNLP, 2025) — 184 + 166 real operators, two evaluation tracks, executable.</p>
+    </div>
+    <div class="card accent" style="padding:.8em 1em;">
+      <h3 style="font-size:1.1em; margin:0 0 .3em;">Our ask</h3>
+      <p class="small" style="margin:0;">A reproducible pipeline a student can launch from a laptop with one command, that costs ≈ a coffee.</p>
+    </div>
+  </div>
+  <p class="small muted" style="margin-top:.6em;">Paper: <a href="https://arxiv.org/pdf/2502.14752">arXiv:2502.14752</a> · Repo: <a href="https://github.com/thunlp/TritonBench">github.com/thunlp/TritonBench</a></p>
+  <aside class="notes">
+    Two tracks: G (generate from scratch from a description) and T (translate a PyTorch
+    function to Triton). We focus on T because it has a clean per-op golden reference
+    and is closer to a real refactoring task.
+  </aside>
+</section>
+
+<!-- ========================= 3. WHAT IS TRITON ========================= -->
+<section>
+  <h2>30-second Triton refresher</h2>
+  <div class="grid cols-2">
+    <div>
+      <ul class="small">
+        <li>Python <span class="term" data-def="Domain-Specific Language. A small language built for one job. Triton is a Python-embedded DSL for writing GPU kernels — you write Python, the compiler emits GPU code." data-label="DSL">DSL</span> from OpenAI for writing custom GPU <span class="term" data-def="On a GPU, a function executed by many threads in parallel. Not the OS kernel. One Triton @jit function = one kernel launched as a grid of thread blocks." data-label="Kernel">kernels</span>.</li>
+        <li>One <code>@triton.jit</code> function ≈ one CUDA kernel, but you reason in <span class="term" data-def="Triton's abstraction. CUDA forces you to think per-thread; Triton lets you operate on a vector of N elements (a 'block') at once and handles the thread layout for you." data-label="Blocks of elements"><em>blocks of elements</em></span>, not threads.</li>
+        <li>Compiles via <span class="term" data-def="A compiler-construction toolkit. Many languages (clang/Rust/Swift) lower to LLVM IR, then LLVM optimizes and emits machine code. Triton uses it to turn its IR into PTX." data-label="LLVM">LLVM</span> to <span class="term" data-def="Parallel Thread eXecution. NVIDIA's intermediate GPU 'assembly'. CUDA and Triton both compile to PTX; the driver then JITs PTX to the actual machine code for your specific GPU." data-label="PTX">PTX</span>. Ships its own <span class="term" data-def="NVIDIA Runtime Compilation. A library that turns CUDA/PTX source into GPU code at runtime, without the full CUDA toolkit installed. Triton bundles a copy so it can JIT your kernel on first call." data-label="NVRTC">NVRTC</span>.</li>
+        <li>Used inside PyTorch (e.g. <span class="term" data-def="PyTorch 2.0's optimizing compiler. Traces your model into a graph and emits fused Triton kernels. Triton matters even if you never write it directly because torch.compile is generating it under the hood." data-label="torch.compile"><code>torch.compile</code></span>) and <span class="term" data-def="A famous fast and memory-efficient attention algorithm (Tri Dao, 2022). Its reference implementation is written in Triton — proof that Triton can express production-grade kernels." data-label="FlashAttention">FlashAttention</span>.</li>
+      </ul>
+    </div>
+    <div>
+<pre><code class="language-python" data-trim>
+import torch, triton, triton.language as tl
+
+@triton.jit
+def add_kernel(x_ptr, y_ptr, out_ptr, n,
+               BLOCK: tl.constexpr):
+    pid  = tl.program_id(0)
+    offs = pid * BLOCK + tl.arange(0, BLOCK)
+    mask = offs &lt; n
+    x = tl.load(x_ptr + offs, mask=mask)
+    y = tl.load(y_ptr + offs, mask=mask)
+    tl.store(out_ptr + offs, x + y, mask=mask)
+</code></pre>
+    </div>
+  </div>
+  <aside class="notes">
+    Whole point of Triton: get tensor-core-class performance without writing CUDA C++.
+    That's exactly the kind of code we want LLMs to be able to produce.
+  </aside>
+</section>
+
+<!-- ========================= 4. TWO TRACKS ========================= -->
+<section>
+  <h2>TritonBench has two tracks</h2>
+  <div class="grid cols-2" style="gap:.7em;">
+    <div class="card" style="padding:.8em 1em;">
+      <span class="pill outline">Track G</span>
+      <h3 style="font-size:1.1em; margin:.3em 0;">Generate from a spec</h3>
+      <p class="small" style="margin:.3em 0;">Description-only prompt. The model has to design the operator's interface AND the kernel.</p>
+      <p class="small muted" style="margin:.3em 0;">Adds <span class="term" data-def="A code-similarity metric (variant of NLP's BLEU score). Combines n-gram overlap, AST match, and dataflow match to score how close generated code is to a reference. TritonBench-G uses it; TritonBench-T does not." data-label="CodeBLEU">CodeBLEU</span> similarity to the eval.</p>
+    </div>
+    <div class="card brand" style="padding:.8em 1em;">
+      <span class="pill">Track T · we use this</span>
+      <h3 style="font-size:1.1em; margin:.3em 0;">Translate from PyTorch</h3>
+      <p class="small" style="margin:.3em 0;">Prompt includes a working PyTorch reference (<code>torch_code</code>). The model rewrites it as a Triton kernel + wrapper that matches the same signature.</p>
+      <p class="small muted" style="margin:.3em 0;">No similarity score — only correctness and speed.</p>
+    </div>
+  </div>
+  <p class="small" style="margin-top:.7em;">
+    166 operators · 9 difficulty levels · simple &amp; "complex" instruction variants.
+  </p>
+</section>
+
+<!-- ========================= 5. ANATOMY OF AN OPERATOR ========================= -->
+<section>
+  <h2>Anatomy of one T operator</h2>
+  <p class="small">Each entry has: a description, the PyTorch reference, an embedded test driver, and metadata.</p>
+<pre><code class="language-json" data-trim data-line-numbers="2-6|7-12|13-18">
+{
+  "name": "abs",
+  "func_inputs": "abs(input_tensor, out=None) -&gt; Tensor.
+                  Args: input_tensor (Tensor)...",
+  "description": "Computes the absolute value of each element
+                  in the input tensor.",
+  "torch_code":
+    "return torch.abs(input_tensor, out=out)",
+  "difficulty": 1,
+  "params_cnt": 2,
+  "torch_cnt": 1,
+  "file": "abs.py"
+}
+</code></pre>
+  <p class="small muted">Source: <code>data/TritonBench_T_v1.<span class="term" data-def="JSON Lines. A file format with one JSON object per line, separated by newlines. Easy to stream, append to, and process line-by-line. Common for ML datasets and structured logs." data-label="jsonl">jsonl</span></code></p>
+</section>
+
+<!-- ========================= 6. THE PROMPT ========================= -->
+<section>
+  <h2>What the LLM actually sees</h2>
+  <p class="small">An <span class="term" data-def="Stanford Alpaca's de-facto standard for instruction-tuning datasets: each item is {instruction, input, output}. TritonBench wraps each operator description in this shape so it's drop-in for fine-tuning or zero-shot evaluation." data-label="Alpaca format">Alpaca-formatted</span> instruction assembled from those fields:</p>
+<pre><code class="language-text" data-trim data-line-numbers="1|2-3|4-5">
+You are an expert in Trion programming...
+Functional Description: Computes the absolute value of each
+element in the input tensor.
+Wrapper Entry Information: abs(input_tensor, out=None) -&gt; Tensor.
+Args: input_tensor (Tensor): The input tensor...
+</code></pre>
+  <p class="small">Two things matter:</p>
+  <ul class="small">
+    <li>The model must produce a <strong>self-contained module</strong> with the same wrapper name and signature.</li>
+    <li>The instruction text is also the <strong>lookup key</strong> back to the reference — the eval greps the substring between <em>"Functional Description:"</em> and <em>"Wrapper Entry Information:"</em>.</li>
+  </ul>
+</section>
+
+<!-- ========================= 7. INTERACTIVE — REFERENCE vs TRITON ========================= -->
+<section>
+  <h2>PyTorch reference ↔ a Triton answer</h2>
+  <p class="small muted">Click the card to flip. (This is what an LLM is asked to produce.)</p>
+  <div class="flip" id="flip-abs" onclick="this.classList.toggle('flipped')">
+    <div class="inner">
+      <div class="face front">
+        <span class="pill">PyTorch reference</span>
+<pre><code class="language-python" data-trim>
+import torch
+
+def abs(input_tensor, out=None):
+    """Element-wise absolute value."""
+    return torch.abs(input_tensor, out=out)
+</code></pre>
+      </div>
+      <div class="face back">
+        <span class="pill accent">Triton translation</span>
+<pre><code class="language-python" data-trim>
+import torch, triton, triton.language as tl
+
+@triton.jit
+def _abs_kernel(x_ptr, out_ptr, n, BLOCK: tl.constexpr):
+    pid  = tl.program_id(0)
+    offs = pid * BLOCK + tl.arange(0, BLOCK)
+    mask = offs &lt; n
+    x = tl.load(x_ptr + offs, mask=mask)
+    tl.store(out_ptr + offs, tl.abs(x), mask=mask)
+
+def abs(input_tensor, out=None):
+    n = input_tensor.numel()
+    out = out if out is not None else torch.empty_like(input_tensor)
+    grid = lambda meta: (triton.cdiv(n, meta['BLOCK']),)
+    _abs_kernel[grid](input_tensor, out, n, BLOCK=1024)
+    return out
+</code></pre>
+      </div>
+    </div>
+  </div>
+  <div class="flip-controls"><button onclick="document.getElementById('flip-abs').classList.toggle('flipped')">Flip card</button></div>
+</section>
+
+<!-- ========================= 8. PIPELINE OVERVIEW ========================= -->
+<section>
+  <h2>The whole pipeline, one picture</h2>
+  <div class="pipeline" style="gap:.3em;">
+    <div class="step" style="min-width:7em; padding:.55em .7em;"><div class="label">Input</div><div class="name" style="font-size:.8em;">Alpaca dataset</div><div class="small muted" style="font-size:.55em;">166 ops</div></div>
+    <div class="arrow" style="font-size:1.3em;">→</div>
+    <div class="step" style="min-width:7em; padding:.55em .7em;"><div class="label">CPU</div><div class="name" style="font-size:.8em;">generate_predictions</div><div class="small muted" style="font-size:.55em;">LLM API · parallel</div></div>
+    <div class="arrow" style="font-size:1.3em;">→</div>
+    <div class="step" style="min-width:7em; padding:.55em .7em;"><div class="label">Volume</div><div class="name" style="font-size:.8em;">predictions.jsonl</div><div class="small muted" style="font-size:.55em;">{instruction, predict}</div></div>
+    <div class="arrow" style="font-size:1.3em;">→</div>
+    <div class="step" style="min-width:7em; padding:.55em .7em;"><div class="label">GPU · T4</div><div class="name" style="font-size:.8em;">evaluate</div><div class="small muted" style="font-size:.55em;">3 phases</div></div>
+    <div class="arrow" style="font-size:1.3em;">→</div>
+    <div class="step" style="min-width:7em; padding:.55em .7em;"><div class="label">Out</div><div class="name" style="font-size:.8em;">summary JSON</div><div class="small muted" style="font-size:.55em;">+ artifacts</div></div>
+  </div>
+  <p class="small muted" style="margin-top:1.2em;">
+    Two Modal Functions sharing one persistent Volume. CPU step generates, GPU step evaluates.
+  </p>
+</section>
+
+<!-- ========================= 9. PHASE 1 ========================= -->
+<section>
+  <h2>Phase 1 — Call accuracy</h2>
+  <p class="small">Per operator: glue the LLM's code together with the embedded test driver and just <em>try to run it</em> as a <span class="term" data-def="A separate OS process spawned by the parent program. Used here so each candidate runs in isolation — a crash, segfault, or bad import kills the child, not the evaluator. Python's `subprocess.run` waits for the child and returns its exit code + stdout/stderr." data-label="Subprocess">subprocess</span>.</p>
+<pre><code class="language-python" data-trim>
+file_contents = predicted_module + "\n" + ("#" * 146) + "\n" + test_driver
+result = subprocess.run([python, file], capture_output=True)
+ok = (result.returncode == 0)
+</code></pre>
+  <div class="pipeline" style="margin-top:.8em; gap:.5em;">
+    <div class="step green" style="padding:.5em .8em;"><div class="label">Pass</div><div class="name" style="font-size:.85em;">survives → results/call_acc/abs.py</div></div>
+    <div class="step red" style="padding:.5em .8em;"><div class="label">Fail</div><div class="name" style="font-size:.85em;">deleted (import error, kernel crash, ...)</div></div>
+  </div>
+  <p class="small muted" style="margin-top:.6em;"><code>0_call_acc.py::call_4file</code></p>
+  <aside class="notes">
+    The 146-character separator is upstream's convention. Test driver always
+    starts with `def test_*` and runs at import-time.
+  </aside>
+</section>
+
+<!-- ========================= 10. PHASE 2 ========================= -->
+<section>
+  <h2>Phase 2 — Execution accuracy</h2>
+  <p class="small">For each survivor: run the candidate AND the <span class="term" data-def="A reference implementation whose output is taken as ground truth. Here: the original PyTorch code shipped with TritonBench, executed on the same inputs as the candidate." data-label="Golden reference">golden reference</span> in two subprocesses, compare their <span class="term" data-def="Standard output. The default text stream a program writes to (what `print` produces). Comparing two stdouts is a cheap, language-agnostic way to check program-output equality without parsing tensors." data-label="stdout"><code>stdout</code></span> verbatim.</p>
+<pre><code class="language-python" data-trim>
+out1 = subprocess.run([py, llm_file], capture_output=True, text=True).stdout
+out2 = subprocess.run([py, gold_file], capture_output=True, text=True).stdout
+ok = (out1 == out2)   # fail → file is deleted from results/call_acc/
+</code></pre>
+  <ul class="small">
+    <li>Why stdout? Each test's <code>print(test_results)</code> serializes the tensors, so stdout equality ≈ output equality.</li>
+    <li>Subtle: tiny <span class="term" data-def="Floating-point math is not associative — (a+b)+c can differ from a+(b+c) in the last few bits. Two implementations that compute 'the same' answer in different orders can produce slightly different results, even though both are correct. Bit-exact stdout comparison treats this as failure." data-label="Float drift">float drift</span> will fail. The benchmark expects bit-for-bit match for these toy ops.</li>
+  </ul>
+  <p class="small muted"><code>1_exe_acc.py::execute_4folder</code></p>
+</section>
+
+<!-- ========================= 11. PHASE 3 ========================= -->
+<section>
+  <h2>Phase 3 — Efficiency</h2>
+  <ol class="small">
+    <li><code>write_file.py</code> rewrites a per-op timing harness into <code>./tmp/&lt;op&gt;_perf.py</code>, pointing it at our surviving candidate.</li>
+    <li><code>multiprocess_gpu_run.py</code> launches each harness on the GPU; <span class="term" data-def="Triton's built-in microbenchmark helper. Runs `warmup` iterations that are discarded (lets JIT compile and GPU caches warm), then `rep` timed iterations averaged into the per-call millisecond cost. The numbers are stable enough to compare two kernels meaningfully." data-label="do_bench"><code>do_bench(warmup=100, rep=1000)</code></span> records milliseconds per input size.</li>
+    <li><code>2_efficiency.py</code> reads our timings + the cached <em><span class="term" data-def="A reference implementation/measurement taken as ground truth. Here: PyTorch timings recorded once on a known machine and committed to the repo, so every candidate is scored against the same baseline regardless of where you run." data-label="Golden">golden</span></em> PyTorch timings (<code>perf_T/golden_results/</code>) and reports speedup.</li>
+  </ol>
+  <pre><code class="language-text" data-trim>
+speedup_op = sum(ms_pytorch) / sum(ms_triton)         # &gt; 1 means faster
+speedup_run = mean(speedup_op for op in survivors)     # final number
+</code></pre>
+  <p class="small muted">Survivors with ms ≥ 10 or ≤ 0.1 are dropped as outliers (upstream rule).</p>
+</section>
+
+<!-- ========================= 12. MEET MODAL ========================= -->
+<section>
+  <h2>Meet Modal</h2>
+  <p class="small muted" style="margin:.2em 0 .6em; font-size:.62em; line-height:1.4;">
+    <span class="term" data-def="A cloud model where you write functions, not servers. The platform spins up a container on demand, runs your function, tears it down, and bills you for actual run-time only. Examples: AWS Lambda for short jobs, Modal for GPU/long jobs." data-label="Serverless">Serverless</span> cloud compute for Python. <span class="term" data-def="A Python feature: writing `@thing` above a function wraps it, modifying its behavior without you editing the function body. Modal uses decorators to mark which functions run in the cloud and what resources they need." data-label="Decorator">Decorate</span> a function, call <code>.remote()</code>, Modal builds the <span class="term" data-def="A lightweight, isolated runtime environment (OS userspace + libraries + your code) sharing the host's kernel. Boots in milliseconds, unlike a VM. Defined by an image and run on shared infrastructure." data-label="Container">container</span>, schedules it, runs it, and bills you per second.
+  </p>
+  <div class="grid cols-3" style="gap:.7em;">
+    <div class="card brand" style="padding:.7em .9em;">
+      <h3 style="font-size:1em; margin:0 0 .3em;">No infra to babysit</h3>
+      <p class="small" style="font-size:.55em; margin:0; line-height:1.4;">No Dockerfile, no Kubernetes, no GPU cluster. Modal turns your <code>Image.pip_install(...)</code> chain into a cached container image.</p>
+    </div>
+    <div class="card" style="padding:.7em .9em;">
+      <h3 style="font-size:1em; margin:0 0 .3em;">GPUs by the second</h3>
+      <p class="small" style="font-size:.55em; margin:0; line-height:1.4;">Pick a GPU per function with one keyword: <code>gpu="T4"</code>. Container only exists while the function runs — no idle cost.</p>
+    </div>
+    <div class="card accent" style="padding:.7em .9em;">
+      <h3 style="font-size:1em; margin:0 0 .3em;">State that survives</h3>
+      <p class="small" style="font-size:.55em; margin:0; line-height:1.4;"><strong>Volumes</strong> persist files · <strong>Secrets</strong> inject API keys · <strong>Schedules</strong> trigger cron-style. All declared in Python.</p>
+    </div>
+  </div>
+  <p class="small muted" style="margin-top:.7em; font-size:.55em;">
+    New accounts get $30 / month of free credit — enough to run TritonBench-T many times. See <a href="https://modal.com/docs/guide">modal.com/docs/guide</a>.
+  </p>
+  <aside class="notes">
+    Mental model: Modal is to GPUs what Vercel is to web servers. You write
+    Python, they handle the operational layer. Pricing is per-second, billed
+    only while a container is actually running, so a 90-second function on a
+    T4 costs about $0.015.
+  </aside>
+</section>
+
+<!-- ========================= 13. MODAL IN CODE ========================= -->
+<section>
+  <h2>Modal in ~15 lines</h2>
+  <div class="grid cols-2" style="grid-template-columns: 1.4fr 1fr; gap:1em;">
+    <div style="min-width:0;">
+<pre style="overflow:hidden;"><code class="language-python" data-trim data-line-numbers="1-4|6-10|12-14" style="font-size:.5em; line-height:1.45;">
+import modal
+
+app = modal.App("hello-gpu")
+image = modal.Image.debian_slim().pip_install("torch")
+
+@app.function(gpu="T4", image=image)    # request a T4
+def square(n: int) -> int:
+    import torch
+    x = torch.tensor(n, device="cuda")
+    return int((x * x).item())
+
+@app.local_entrypoint()                  # CLI entry
+def main():
+    print(square.remote(7))              # runs in cloud
+</code></pre>
+    </div>
+    <div style="min-width:0;">
+      <ul class="small" style="font-size:.6em; line-height:1.45; padding-left:1.1em; margin:0;">
+        <li><code>@app.function</code> binds an image + GPU to a function.</li>
+        <li><span class="term" data-def="Modal-specific: ship this call to a cloud container, run it there, return the result back to your laptop. The function body executes remotely; the call site just sees a normal return value (or exception). Same function also has `.local()` for local execution during testing." data-label=".remote()"><code>.remote(...)</code></span> ships the call to Modal; <code>.local(...)</code> runs it on your laptop for tests.</li>
+        <li><code>@app.local_entrypoint</code> exposes a function as a CLI: <code>modal run file.py</code>.</li>
+        <li>First call builds the image (minutes); next calls reuse the <span class="term" data-def="Modal stores built container images and recently-used containers. Repeat calls skip the build step and may reuse a 'warm' container, dropping startup latency from minutes to single-digit seconds. The opposite is a 'cold start' — full container boot from scratch." data-label="Cache">cache</span> (seconds).</li>
+        <li>Same shape as our app — swap <code>square</code> for <code>generate_predictions</code> and <code>evaluate</code>.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ========================= 14. WHY MODAL FOR THIS ========================= -->
+<section>
+  <h2>Why Modal for this</h2>
+  <div class="grid cols-3">
+    <div class="card brand">
+      <h3>Cheap on-demand GPUs</h3>
+      <p class="small">T4 at <strong>$0.59 / hour</strong>, billed by the second. No idle cost.</p>
+    </div>
+    <div class="card">
+      <h3>Image is code</h3>
+      <p class="small">CUDA + Triton + the patched repo all baked into one cached image. Students run the same env we do.</p>
+    </div>
+    <div class="card accent">
+      <h3>Persistent volume</h3>
+      <p class="small">Predictions and per-phase artifacts survive across runs. Easy to re-evaluate without regenerating.</p>
+    </div>
+  </div>
+  <p class="small muted" style="margin-top:1em;">Reference: <a href="https://modal.com/pricing">modal.com/pricing</a></p>
+</section>
+
+<!-- ========================= 13. ARCHITECTURE ========================= -->
+<section>
+  <h2>Architecture inside <code>modal_app.py</code></h2>
+<pre><code class="language-python" data-trim data-line-numbers="1-6|8-12|14-19|21-24">
+image = (modal.Image
+    .from_registry("nvidia/cuda:12.4.1-devel-ubuntu22.04", add_python="3.12")
+    .pip_install("torch==2.5.1", "triton==3.1.0", "anthropic", "openai", ...)
+    .run_commands("git clone --depth 1 https://github.com/thunlp/TritonBench /opt/TritonBench")
+    .run_commands(PATCH_SCRIPT))   # fixes hardcoded paths upstream
+
+data_volume = modal.Volume.from_name("tritonbench-t-data", create_if_missing=True)
+
+@app.function(cpu=4, volumes={"/data": data_volume},
+              secrets=[modal.Secret.from_name("tritonbench-llm")])
+def generate_predictions(provider, model, dataset, ...): ...
+
+@app.function(gpu="T4", timeout=6*60*60, volumes={"/data": data_volume})
+def evaluate(predictions_path, output_subdir):
+    # phase 1: call_acc.call_4file(...)
+    # phase 2: exe_acc.execute_4folder(...)
+    # phase 3: subprocess.run([..., "2_efficiency.py", ...])
+    return summary
+
+@app.local_entrypoint()
+def main(...):
+    remote = generate_predictions.remote(...)
+    return evaluate.remote(remote)
+</code></pre>
+</section>
+
+<!-- ========================= 16. PATCHES ========================= -->
+<section>
+  <h2>Why the image patches the repo</h2>
+  <p class="small" style="margin-bottom:.6em;">Upstream eval scripts have baked-in assumptions that don't hold in a clean container. We rewrite them at <em>image build time</em> with three single-line <span class="term" data-def="Stream EDitor — a UNIX command-line tool for find-and-replace on text files. `sed -i 's|pattern|replacement|' file` rewrites the file in place. We use it to patch upstream's hardcoded paths during the Modal image build." data-label="sed">sed</span> calls — no manual setup for the student.</p>
+
+  <div class="grid cols-2" style="gap:.7em;">
+    <div class="card" style="padding:.7em .9em;">
+      <span class="pill" style="font-size:.55em;">EVAL/eval_T/0_call_acc.py</span>
+      <p class="small" style="font-size:.55em; margin:.4em 0;">Wrong file extension, wrong dataset folder (G instead of T), wrong interpreter.</p>
+<pre style="margin:0;"><code class="language-diff" data-trim style="font-size:.42em;">
+- statis_path = "data/TritonBench_T_v1.json"
++ statis_path = "data/TritonBench_T_v1.jsonl"
+- py_folder   = "data/TritonBench_G_v1/"
++ py_folder   = "data/TritonBench_T_v1/"
+- py_interpreter = "/home/.../envs/LLM/bin/python"
++ py_interpreter = sys.executable
+</code></pre>
+    </div>
+
+    <div class="card" style="padding:.7em .9em;">
+      <span class="pill" style="font-size:.55em;">EVAL/eval_T/1_exe_acc.py</span>
+      <p class="small" style="font-size:.55em; margin:.4em 0;">Same hardcoded conda interpreter:</p>
+<pre style="margin:0;"><code class="language-diff" data-trim style="font-size:.42em;">
+- py_interpreter = "/home/.../envs/LLM/bin/python"
++ py_interpreter = sys.executable
+</code></pre>
+      <span class="pill" style="font-size:.55em; margin-top:.6em; display:inline-block;">perf_T/run_bench/multiprocess_gpu_run.py</span>
+      <p class="small" style="font-size:.55em; margin:.4em 0;">Assumes 8 GPUs; we have one:</p>
+<pre style="margin:0;"><code class="language-diff" data-trim style="font-size:.42em;">
+- gpu_count = 8
++ gpu_count = 1
+</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ========================= 15. SETUP ========================= -->
+<section>
+  <h2>Hands-on · setup (once)</h2>
+<pre><code class="language-bash" data-trim>
+# 1. Modal client + auth
+pip install -r requirements-local.txt
+modal setup                                  # opens a browser
+
+# 2. ONE LLM key, named tritonbench-llm
+modal secret create tritonbench-llm \
+    ANTHROPIC_API_KEY=sk-ant-...
+#   or  OPENAI_API_KEY=sk-...
+</code></pre>
+  <p class="small">That's it. Image, volume, and the patched repo are created on first run.</p>
+</section>
+
+<!-- ========================= 16. RUN ========================= -->
+<section>
+  <h2>Hands-on · running</h2>
+<pre><code class="language-bash" data-trim>
+# Smoke test: 5 ops, costs cents, takes a few minutes
+modal run modal_app.py::main --limit 5
+
+# Full run: all 166 ops (default Anthropic Claude Sonnet)
+modal run modal_app.py::main
+
+# Try OpenAI / a different model / the harder dataset
+modal run modal_app.py::main --provider openai --model gpt-4o-mini
+modal run modal_app.py::main --dataset comp
+
+# Bring your own predictions.jsonl
+modal run modal_app.py::evaluate_only --predictions ./preds.jsonl
+</code></pre>
+  <p class="small muted">Logs stream to your terminal in real time. <span class="kbd">Ctrl-C</span> stops the function and releases the GPU.</p>
+</section>
+
+<!-- ========================= 17. INTERACTIVE COST CALCULATOR ========================= -->
+<section>
+  <h2>How much will this cost?</h2>
+  <div class="calc">
+    <div>
+      <label>Operators</label>
+      <input type="number" id="c-ops" value="166" min="1" max="166">
+    </div>
+    <div>
+      <label>Avg. seconds per op</label>
+      <input type="number" id="c-sec" value="60" min="1" max="600">
+    </div>
+    <div>
+      <label>GPU tier</label>
+      <select id="c-gpu">
+        <option value="0.000164" selected>T4 — $0.59/hr</option>
+        <option value="0.000222">L4 — $0.80/hr</option>
+        <option value="0.000306">A10 — $1.10/hr</option>
+        <option value="0.000583">A100 40GB — $2.10/hr</option>
+        <option value="0.001097">H100 — $3.95/hr</option>
+      </select>
+    </div>
+    <button onclick="recalc()" style="background:var(--brand);color:#fff;border:none;border-radius:8px;padding:.55em .9em;font-weight:600;cursor:pointer;font-size:.65em;">Estimate</button>
+    <div class="calc-result" id="c-out">
+      Pick parameters and press <em>Estimate</em>.
+    </div>
+  </div>
+  <p class="small muted" style="margin-top:1em;">
+    Modal bills per second — only the GPU container's wall-clock counts.
+    Generation runs on a CPU container (separate, much cheaper).
+  </p>
+  <script>
+    function recalc() {
+      const ops  = +document.getElementById('c-ops').value;
+      const sec  = +document.getElementById('c-sec').value;
+      const rate = +document.getElementById('c-gpu').value;
+      const total = ops * sec * rate;
+      const fmt = total < 0.01 ? total.toExponential(2) : total.toFixed(2);
+      document.getElementById('c-out').innerHTML =
+        `<strong>≈ $${fmt}</strong> &nbsp;·&nbsp; ${ops} ops × ${sec}s × $${rate}/s`;
+    }
+  </script>
+</section>
+
+<!-- ========================= 18. SUMMARY JSON ========================= -->
+<section>
+  <h2>What a finished run prints</h2>
+<pre><code class="language-json" data-trim data-line-numbers="2|3-6|7-10|11-15">
+{
+  "total_predictions": 166,
+  "phase1_call_acc": {
+    "passed": 88,
+    "rate": 53.01
+  },
+  "phase2_exec_acc": {
+    "passed": 71,
+    "rate": 42.77
+  },
+  "phase3_efficiency": {
+    "speedup_vs_pytorch": 0.83,
+    "raw_output_tail": "..."
+  },
+  "artifacts_volume": "tritonbench-t-data",
+  "artifacts_subdir": "results"
+}
+</code></pre>
+  <ul class="small">
+    <li><strong>rate</strong> = % of all 166 ops, not % of survivors. Compare across models like-for-like.</li>
+    <li><strong>speedup &gt; 1</strong> means generated Triton beat PyTorch on the surviving ops.</li>
+  </ul>
+</section>
+
+<!-- ========================= 19. INSPECT ARTIFACTS ========================= -->
+<section>
+  <h2>Pulling artifacts down</h2>
+<pre><code class="language-bash" data-trim>
+# Browse what landed in the volume
+modal volume ls tritonbench-t-data results/
+
+# Download everything to your laptop
+modal volume get tritonbench-t-data results/ ./local-results/
+
+# What you'll find:
+# results/call_acc/        one .py per op that passed phase 1 (then pruned by 2)
+# results/perf_results/    one .json per op with input_size + ms timings
+</code></pre>
+  <p class="small">Open any <code>call_acc/&lt;op&gt;.py</code> to see exactly the code the LLM produced — great for class discussion.</p>
+</section>
+
+<!-- ========================= 22. PITFALLS ========================= -->
+<section>
+  <h2>Common pitfalls</h2>
+  <div class="grid cols-2" style="gap:.6em;">
+    <div class="card" style="padding:.65em .85em;">
+      <h3 style="font-size:1em; margin:0 0 .3em;">T4 has no <span class="term" data-def="BF16 (bfloat16) is a 16-bit float format with the *range* of fp32 but reduced precision — popular for ML training. Tensor Cores are specialized matrix-multiply hardware on NVIDIA GPUs (since Volta). The T4 has fp16 tensor cores but no bf16 ones, so kernels that demand bf16 acceleration fall back to slow paths or simply fail." data-label="bf16 tensor cores">bf16 tensor cores</span></h3>
+      <p class="small" style="font-size:.55em; margin:0;">A handful of ops fail at phase 1 with cryptic errors. Switch to <code>L4</code> or <code>A10</code> by editing <code>DEFAULT_GPU</code> if you need them.</p>
+    </div>
+    <div class="card" style="padding:.65em .85em;">
+      <h3 style="font-size:1em; margin:0 0 .3em;">Instruction must match exactly</h3>
+      <p class="small" style="font-size:.55em; margin:0;">If you hand-edit the prompt, the eval can't link your prediction back to its reference. Reuse the Alpaca strings verbatim.</p>
+    </div>
+    <div class="card" style="padding:.65em .85em;">
+      <h3 style="font-size:1em; margin:0 0 .3em;">Speedup ≠ correctness</h3>
+      <p class="small" style="font-size:.55em; margin:0;">Phase 3 only runs over phase-2 survivors. A model with 3 fast-but-rare wins can look great until you check the <em>passed</em> count.</p>
+    </div>
+    <div class="card" style="padding:.65em .85em;">
+      <h3 style="font-size:1em; margin:0 0 .3em;">Stdout-equality is strict</h3>
+      <p class="small" style="font-size:.55em; margin:0;">Numerically-equivalent kernels can fail phase 2 due to float drift. That's the upstream rule — don't "fix" it in your fork.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========================= 23. QUIZ ========================= -->
+<section>
+  <h2>Quick check (3 questions)</h2>
+  <div class="quiz" id="quiz" style="font-size:.85em;">
+    <div class="q" style="font-size:.7em; margin-bottom:.25em;">1. Which phase deletes a candidate when its <code>stdout</code> differs from the reference?</div>
+    <button class="opt" data-q="1" data-ok="0" style="font-size:.55em; padding:.35em .7em; margin:.2em 0;">Phase 1 — call accuracy</button>
+    <button class="opt" data-q="1" data-ok="1" style="font-size:.55em; padding:.35em .7em; margin:.2em 0;">Phase 2 — execution accuracy</button>
+    <button class="opt" data-q="1" data-ok="0" style="font-size:.55em; padding:.35em .7em; margin:.2em 0;">Phase 3 — efficiency</button>
+    <div class="feedback" id="fb-1" style="font-size:.55em; min-height:.9em;"></div>
+
+    <div class="q" style="font-size:.7em; margin-top:.6em; margin-bottom:.25em;">2. Why do we patch <code>py_folder</code> in <code>0_call_acc.py</code>?</div>
+    <button class="opt" data-q="2" data-ok="0" style="font-size:.55em; padding:.35em .7em; margin:.2em 0;">To use a faster JSON loader</button>
+    <button class="opt" data-q="2" data-ok="1" style="font-size:.55em; padding:.35em .7em; margin:.2em 0;">Upstream points it at the G dataset, but T tests live in <code>TritonBench_T_v1/</code></button>
+    <button class="opt" data-q="2" data-ok="0" style="font-size:.55em; padding:.35em .7em; margin:.2em 0;">To shard execution across multiple GPUs</button>
+    <div class="feedback" id="fb-2" style="font-size:.55em; min-height:.9em;"></div>
+
+    <div class="q" style="font-size:.7em; margin-top:.6em; margin-bottom:.25em;">3. A reported speedup of 0.83 means…</div>
+    <button class="opt" data-q="3" data-ok="0" style="font-size:.55em; padding:.35em .7em; margin:.2em 0;">The Triton kernel is 17% faster than PyTorch on average.</button>
+    <button class="opt" data-q="3" data-ok="1" style="font-size:.55em; padding:.35em .7em; margin:.2em 0;">PyTorch is faster — generated Triton runs at 83% of its speed.</button>
+    <button class="opt" data-q="3" data-ok="0" style="font-size:.55em; padding:.35em .7em; margin:.2em 0;">17% of operators failed.</button>
+    <div class="feedback" id="fb-3" style="font-size:.55em; min-height:.9em;"></div>
+  </div>
+  <script>
+    document.querySelectorAll('#quiz .opt').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const q = btn.dataset.q;
+        const ok = btn.dataset.ok === '1';
+        document.querySelectorAll(`#quiz .opt[data-q="${q}"]`).forEach(b => {
+          b.classList.remove('right', 'wrong'); b.disabled = true;
+        });
+        btn.classList.add(ok ? 'right' : 'wrong');
+        if (!ok) {
+          const right = document.querySelector(`#quiz .opt[data-q="${q}"][data-ok="1"]`);
+          right.classList.add('right');
+        }
+        document.getElementById('fb-' + q).textContent =
+          ok ? '✔ Correct.' : '✘ The right answer is highlighted in green.';
+      });
+    });
+  </script>
+</section>
+
+<!-- ========================= 24. GO FURTHER ========================= -->
+<section>
+  <h2>Where to go next</h2>
+  <ul style="font-size:.85em; line-height:1.45;">
+    <li>Compare two models on the <strong>same</strong> volume:
+      <code>modal run modal_app.py::main --model claude-sonnet-4-6</code> vs.
+      <code>--model gpt-4o-mini</code>.</li>
+    <li>Run on <code>--dataset comp</code> for harder, multi-op fusion prompts.</li>
+    <li>Open a couple of <code>results/call_acc/*.py</code> files and read what the LLM wrote. Find one operator where it produced a beautifully wrong kernel.</li>
+    <li>Swap the GPU tier and measure: does <code>L4</code> change the speedup number, or just the wall-clock?</li>
+  </ul>
+  <p class="small muted" style="margin-top:.8em;">
+    Repo: <code>tritonbench-modal/</code> · Slides: this file · Questions: bring them to class.
+  </p>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/highlight.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    history: true,
+    transition: 'slide',
+    width: 1200,
+    height: 760,
+    margin: 0.06,
+    plugins: [RevealHighlight, RevealNotes],
+  });
+
+  /* ---------- Click-to-define jargon popovers ---------- */
+  (function () {
+    let active = null;
+
+    function close() {
+      if (!active) return;
+      active.term.classList.remove('active');
+      active.pop.remove();
+      active = null;
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      })[c]);
+    }
+
+    document.addEventListener('click', (e) => {
+      // Click inside an open popover? Leave it open (so users can copy text).
+      if (active && active.pop.contains(e.target)) {
+        if (e.target.matches('.term-popover .close')) close();
+        return;
+      }
+      const term = e.target.closest('.term');
+      close();
+      if (!term || !term.dataset.def) return;
+      e.stopPropagation();
+
+      term.classList.add('active');
+      const pop = document.createElement('span');
+      pop.className = 'term-popover';
+      const label = term.dataset.label || term.textContent.trim();
+      pop.innerHTML =
+        '<button class="close" aria-label="Close">×</button>' +
+        '<span class="label">' + escapeHtml(label) + '</span>' +
+        escapeHtml(term.dataset.def);
+      term.appendChild(pop);
+      active = { term, pop };
+
+      // Flip alignment if the popover would overflow the right edge.
+      const rect = pop.getBoundingClientRect();
+      if (rect.right > window.innerWidth - 16) {
+        pop.classList.add('right-aligned');
+      }
+    });
+
+    // Close popover when the user navigates slides or hits Escape.
+    Reveal.on('slidechanged', close);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') close();
+    });
+  })();
+</script>
+</body>
+</html>
