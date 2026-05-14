@@ -7,6 +7,16 @@ nav: true
 nav_order: 6
 ---
 
+## TC3002B - Aplicaciones Computacionales Avanzadas
+
+Capstone course that frames the final project for ~120 undergraduate Computer Science students at Tecnológico de Monterrey. The curriculum integrates six modules — Artificial Intelligence, Compilers, Statistics, Research Methods, and two project tracks — and is delivered alongside four industry partners: **C3.ai, Intel, NXP, and Oracle**.
+
+The 2026 cohort works on agentic LLM systems with an emphasis on efficient inference: Triton kernels, GPU-based LLM serving, and constrained decoding for structured outputs. Course material, notebooks, and project briefs are published as a Jupyter Book.
+
+- **Course site:** [salvahin.github.io/ACA-2026](https://salvahin.github.io/ACA-2026)
+
+---
+
 ## TC6003 - Analysis and Design of Algorithms
 
 Graduate course covering fundamental algorithm design paradigms and analysis techniques.

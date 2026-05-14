@@ -5,12 +5,9 @@ date: 2025-10-27 12:00:00
 description: Paper on compiler-assisted pipeline for automated program repair published at MICAI 2025
 tags: APR SWE-Bench MICAI compiler research
 categories: research
-thumbnail: assets/img/blog/news/2025-10-beyond-swebench.jpg
 ---
 
 Our paper **"Beyond SWE-Bench: A Compiler-Assisted Pipeline for Multi-language Automated Program Repair"** was published at **MICAI 2025**.
-
-{% include figure.liquid loading="eager" path="assets/img/blog/news/2025-10-beyond-swebench.jpg" class="img-fluid rounded z-depth-1" caption="Paper presentation at MICAI 2025" %}
 
 ## Research Summary
 

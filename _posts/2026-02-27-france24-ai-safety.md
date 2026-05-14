@@ -5,12 +5,9 @@ date: 2026-02-27 12:00:00
 description: Featured on France 24 Español discussing AI safety, Constitutional AI, and industry tensions
 tags: AI-safety media France24 Anthropic OpenAI
 categories: media
-thumbnail: assets/img/blog/news/2026-02-france24.jpg
 ---
 
 I was featured on **France 24 Español** discussing critical topics in artificial intelligence development.
-
-{% include figure.liquid loading="eager" path="assets/img/blog/news/2026-02-france24.jpg" class="img-fluid rounded z-depth-1" caption="France 24 interview on AI safety" %}
 
 ## Topics Discussed
 
