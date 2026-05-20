@@ -1,0 +1,2305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inside XGrammar — Constrained Decoding</title>
+
+  <!-- Reveal.js core + theme -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css" id="theme">
+
+  <!-- Code highlighting -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/monokai.css">
+
+  <style>
+    :root {
+      --accent: #0e7c66;
+      --accent-soft: #d3efe7;
+      --warn: #c0392b;
+      --warn-soft: #fadbd8;
+      --ok: #27ae60;
+      --ok-soft: #d5f5e3;
+      --muted: #607080;
+      --bg-soft: #f6f7f9;
+      --code-bg: #1e1e1e;
+    }
+    .reveal { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; }
+    .reveal h1, .reveal h2, .reveal h3, .reveal h4 { color: #14202b; letter-spacing: -0.01em; }
+    .reveal h1 { font-size: 2.0em; }
+    .reveal h2 { font-size: 1.5em; }
+    .reveal h3 { font-size: 1.15em; }
+    .reveal section { text-align: left; }
+    .reveal .center { text-align: center; }
+    .reveal p, .reveal li { line-height: 1.45; }
+
+    /* -------- Language toggle -------- */
+    body.lang-en .t-es,
+    body.lang-en text.t-es { display: none !important; }
+    body.lang-es .t-en,
+    body.lang-es text.t-en { display: none !important; }
+
+    /* For SVG text, "display: none" works in most browsers; visibility fallback */
+    body.lang-en text.t-es { visibility: hidden; }
+    body.lang-es text.t-en { visibility: hidden; }
+
+    #lang-toggle {
+      position: fixed; top: 14px; right: 14px; z-index: 1000;
+      background: rgba(255,255,255,0.95); border: 1px solid #ccd2d8;
+      border-radius: 999px; padding: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      font-family: 'Inter', system-ui, sans-serif; font-size: 13px;
+      display: flex; gap: 0; user-select: none;
+    }
+    #lang-toggle button {
+      background: transparent; border: none; cursor: pointer;
+      padding: 4px 12px; border-radius: 999px;
+      font-weight: 600; color: var(--muted);
+      transition: all 0.15s;
+    }
+    #lang-toggle button:hover { color: #14202b; }
+    #lang-toggle button.active {
+      background: var(--accent); color: #fff;
+    }
+
+    /* Tags / chips */
+    .tag {
+      display: inline-block; padding: 2px 10px; border-radius: 999px;
+      font-size: 0.55em; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+      background: var(--accent-soft); color: var(--accent); margin-right: 8px;
+      vertical-align: middle;
+    }
+    .tag.warn { background: var(--warn-soft); color: var(--warn); }
+    .tag.muted { background: #e6e9ec; color: var(--muted); }
+
+    /* Two-column layout */
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+    .cols.uneven { grid-template-columns: 1.2fr 1fr; }
+
+    /* Callouts */
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: var(--accent-soft);
+      padding: 14px 18px; border-radius: 0 8px 8px 0;
+      font-size: 0.85em;
+    }
+    .callout.warn { border-color: var(--warn); background: var(--warn-soft); }
+    .callout.muted { border-color: var(--muted); background: var(--bg-soft); }
+
+    /* Code tweaks */
+    .reveal pre { box-shadow: 0 4px 18px rgba(0,0,0,0.18); font-size: 0.55em; }
+    .reveal pre code { padding: 18px 22px; max-height: 520px; line-height: 1.35; }
+
+    /* Slim list */
+    .reveal ul.slim li, .reveal ol.slim li { margin: 4px 0; }
+
+    /* Quiz */
+    .quiz {
+      background: #fffaf0;
+      border: 2px dashed #e0a800;
+      padding: 20px 26px; border-radius: 10px;
+    }
+    .quiz .opts { list-style: none; padding: 0; margin: 14px 0 0 0; }
+    .quiz .opts li {
+      padding: 8px 12px; margin: 6px 0; border-radius: 6px; background: #fff;
+      border: 1px solid #eee;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .quiz .opts li:hover { background: var(--bg-soft); }
+    .quiz .opts li.correct { background: var(--ok-soft); border-color: var(--ok); }
+    .quiz .opts li.wrong { background: var(--warn-soft); border-color: var(--warn); }
+    .quiz .reveal-answer { margin-top: 14px; font-size: 0.85em; }
+
+    /* PDA stack visualization */
+    .pda-svg { width: 100%; height: 360px; }
+    .pda-svg .frame { transition: opacity 0.4s, transform 0.4s; }
+
+    /* Token mask visualization */
+    .mask-grid { display: grid; grid-template-columns: repeat(16, 1fr); gap: 3px; }
+    .mask-grid .cell {
+      aspect-ratio: 1; border-radius: 3px; background: #ddd;
+      transition: background 0.4s;
+    }
+    .mask-grid .cell.ok { background: var(--ok); }
+    .mask-grid .cell.bad { background: var(--warn); }
+    .mask-grid .cell.cd  { background: #f1c40f; }
+
+    /* Swimlane — CSS Grid with shared columns so CPU/GPU lanes align vertically.
+       Column widths are weighted: forward (2fr) is wider than sample (1fr) to
+       reflect their real time cost. */
+    .swimlane {
+      display: grid;
+      grid-template-columns: 60px 2fr 1fr 2fr 1fr 2fr;
+      grid-template-rows: auto auto;
+      gap: 8px 6px;
+      margin: 20px 0;
+    }
+    .swimlane .lane-label {
+      display: flex; align-items: center;
+      font-weight: 700; font-size: 0.75em; color: var(--muted);
+    }
+    .swimlane .block {
+      padding: 8px 6px; border-radius: 4px;
+      font-size: 0.6em; font-weight: 600; color: #fff;
+      text-align: center;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 32px;
+    }
+    .swimlane .block.gpu  { background: #2980b9; }
+    .swimlane .block.cpu  { background: #16a085; }
+    .swimlane .block.sync { background: #8e44ad; }
+    .swimlane .block.cpu.accept { background: #16a08580; color: #0c5a4a; }
+    /* Time axis below */
+    .swimlane-axis {
+      grid-column: 2 / 7;
+      border-top: 1px dashed #c0c4c8;
+      margin-top: 4px;
+      padding-top: 4px;
+      font-size: 0.55em; color: var(--muted);
+      display: flex; justify-content: space-between;
+    }
+
+    /* Footer */
+    .footer-note {
+      position: fixed; bottom: 8px; right: 14px;
+      font-size: 0.55em; color: var(--muted);
+    }
+
+    /* Smaller tables */
+    .reveal table { font-size: 0.7em; }
+    .reveal table th { background: var(--bg-soft); }
+
+    /* Highlight terms inline */
+    .hl { background: linear-gradient(180deg, transparent 60%, #fff3a3 60%); padding: 0 2px; font-weight: 600; }
+    .hl-warn { background: linear-gradient(180deg, transparent 60%, var(--warn-soft) 60%); padding: 0 2px; font-weight: 600; color: var(--warn); }
+    .hl-ok { background: linear-gradient(180deg, transparent 60%, var(--ok-soft) 60%); padding: 0 2px; font-weight: 600; color: var(--ok); }
+
+    /* Number stat */
+    .stat { font-size: 2.2em; font-weight: 800; color: var(--accent); line-height: 1; }
+    .stat-label { font-size: 0.7em; color: var(--muted); }
+
+    /* -------- Glossary terms (clickable) -------- */
+    .glossary {
+      border-bottom: 1.5px dashed var(--accent);
+      cursor: help;
+      padding: 0 2px;
+      border-radius: 2px;
+      transition: background 0.15s;
+    }
+    .glossary:hover {
+      background: var(--accent-soft);
+    }
+    .glossary::after {
+      content: "?";
+      display: inline-block;
+      font-size: 0.55em;
+      vertical-align: super;
+      color: var(--accent);
+      margin-left: 2px;
+      font-weight: 700;
+      opacity: 0.7;
+    }
+
+    /* -------- Glossary modal -------- */
+    #glossary-modal {
+      position: fixed; inset: 0; z-index: 2000;
+      display: flex; align-items: center; justify-content: center;
+      animation: modalFadeIn 0.18s ease-out;
+    }
+    #glossary-modal.hidden { display: none; }
+    @keyframes modalFadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    .modal-backdrop {
+      position: absolute; inset: 0;
+      background: rgba(20,32,43,0.65);
+      backdrop-filter: blur(2px);
+    }
+    .modal-card {
+      position: relative; background: #fff;
+      border-radius: 12px; padding: 30px 36px 26px;
+      max-width: 580px; width: calc(100% - 60px);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+      font-family: 'Inter', system-ui, sans-serif;
+      animation: cardPopIn 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+    }
+    @keyframes cardPopIn {
+      from { transform: scale(0.92); opacity: 0; }
+      to   { transform: scale(1);    opacity: 1; }
+    }
+    .modal-close {
+      position: absolute; top: 10px; right: 14px;
+      background: none; border: none; font-size: 26px; line-height: 1;
+      cursor: pointer; color: var(--muted);
+      width: 32px; height: 32px; border-radius: 6px;
+    }
+    .modal-close:hover { background: var(--bg-soft); color: #14202b; }
+    .modal-card h3 {
+      margin: 0 0 12px 0; color: var(--accent);
+      font-size: 1.2em;
+    }
+    .modal-card .modal-body {
+      font-size: 0.95em; line-height: 1.55; color: #14202b;
+    }
+    .modal-card .modal-body code {
+      background: var(--bg-soft); padding: 1px 5px;
+      border-radius: 3px; font-size: 0.92em;
+    }
+    .modal-card .modal-footer {
+      margin-top: 16px; padding-top: 12px;
+      border-top: 1px solid #eee;
+      font-size: 0.75em; color: var(--muted);
+    }
+
+    /* -------- Ecosystem cards (Meet the tools slide) -------- */
+    .ecosystem {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 14px;
+    }
+    .eco-card {
+      background: #fff;
+      border: 1px solid #e1e5e9;
+      border-radius: 10px;
+      padding: 14px 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .eco-card .eco-title {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.85em; font-weight: 700;
+      color: var(--accent); margin-bottom: 6px;
+    }
+    .eco-card .eco-tag {
+      background: var(--accent-soft); color: var(--accent);
+      padding: 2px 8px; border-radius: 999px;
+      font-size: 0.65em; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .eco-card .eco-body {
+      font-size: 0.7em; line-height: 1.45; color: #14202b;
+    }
+    .eco-card .eco-body strong { color: var(--accent); }
+  </style>
+</head>
+<body class="lang-en">
+
+<!-- Language toggle -->
+<div id="lang-toggle" title="Switch language / Cambiar idioma">
+  <button data-lang="en" class="active">EN</button>
+  <button data-lang="es">ES</button>
+</div>
+
+<!-- Glossary modal (shown on click of any .glossary term) -->
+<div id="glossary-modal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="glossary-modal-title">
+  <div class="modal-backdrop"></div>
+  <div class="modal-card">
+    <button class="modal-close" aria-label="Close">&times;</button>
+    <h3 id="glossary-modal-title"></h3>
+    <div class="modal-body" id="glossary-modal-body"></div>
+    <div class="modal-footer">
+      <span class="t-en">Press <code>Esc</code> or click outside to close.</span>
+      <span class="t-es">Presiona <code>Esc</code> o haz clic fuera para cerrar.</span>
+    </div>
+  </div>
+</div>
+
+<div class="reveal">
+  <div class="slides">
+
+    <!-- ============================================================== -->
+    <!-- SLIDE 1 — TITLE -->
+    <!-- ============================================================== -->
+    <section data-background-color="#fafbfc">
+      <div class="center">
+        <h1 style="margin-bottom: 0.2em;">
+          <span class="t-en">Inside XGrammar</span>
+          <span class="t-es">Por dentro de XGrammar</span>
+        </h1>
+        <h2 style="color: var(--accent); font-weight: 500; margin-top: 0;">
+          <span class="t-en">How constrained decoding actually works</span>
+          <span class="t-es">Cómo funciona realmente la decodificación restringida</span>
+        </h2>
+        <hr style="width: 40%; margin: 2em auto; border: 1px solid #eee;">
+        <p style="font-size: 0.7em; color: var(--muted);">
+          <span class="t-en">90-minute lecture · Advanced UG / Early Grad CS</span>
+          <span class="t-es">Clase de 90 minutos · CS avanzado / posgrado inicial</span>
+          <br><br>
+          <strong>Salvador Hinojosa</strong> · Tec de Monterrey
+        </p>
+      </div>
+      <aside class="notes">
+        <span class="t-en">Welcome. Today's class is about XGrammar — the engine that lets LLMs produce JSON, regex matches, or any context-free grammar with 100% structural correctness and near-zero overhead. The focus is on algorithmic and conceptual ideas, not GPU kernels. By the end you should be able to read the paper and follow it.</span>
+        <span class="t-es">Bienvenidos. La clase de hoy es sobre XGrammar — el motor que permite a los LLMs producir JSON, coincidencias regex o cualquier gramática libre de contexto con 100% de corrección estructural y casi cero sobrecarga. El foco está en lo algorítmico y conceptual, no en kernels de GPU. Al terminar deberían poder leer el paper y entenderlo.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE 2 — HOOK -->
+    <!-- ============================================================== -->
+    <section>
+      <h2>
+        <span class="tag warn">
+          <span class="t-en">Hook</span><span class="t-es">Anzuelo</span>
+        </span>
+        <span class="t-en">One bad token = broken pipeline</span>
+        <span class="t-es">Un mal token rompe todo el pipeline</span>
+      </h2>
+
+      <div class="cols">
+        <div>
+          <p>
+            <span class="t-en">Your LLM was asked to return JSON. It returned:</span>
+            <span class="t-es">Le pediste JSON a tu LLM. Devolvió esto:</span>
+          </p>
+          <pre><code class="language-json" data-line-numbers="|3|5" data-trim>
+{
+  "user": "Ada",
+  "score": 99,
+  "tags": ["math", "logic"]
+  "active": true,
+}
+          </code></pre>
+        </div>
+        <div class="fragment">
+          <p><strong>
+            <span class="t-en">Three ways out:</span>
+            <span class="t-es">Tres salidas:</span>
+          </strong></p>
+          <ul class="slim">
+            <li class="fragment">
+              <span class="t-en">Retry until valid — unbounded latency.</span>
+              <span class="t-es">Reintentar hasta que sea válido — latencia no acotada.</span>
+            </li>
+            <li class="fragment">
+              <span class="t-en">Fine-tune for format — works <em>most</em> of the time.</span>
+              <span class="t-es">Hacer fine-tuning para el formato — funciona <em>casi</em> siempre.</span>
+            </li>
+            <li class="fragment">
+              <span class="hl-ok">
+                <span class="t-en">Constrained decoding</span>
+                <span class="t-es">Decodificación restringida</span>
+              </span>
+              <span class="t-en"> — make the bad token <em>unsamplable</em>.</span>
+              <span class="t-es"> — hacer que el token malo no sea <em>muestreable</em>.</span>
+            </li>
+          </ul>
+          <div class="callout fragment" style="margin-top: 12px;">
+            <span class="t-en">XGrammar picks option 3 and pays <span class="hl">near zero</span> extra latency for it.</span>
+            <span class="t-es">XGrammar elige la opción 3 y paga <span class="hl">casi cero</span> latencia extra por ella.</span>
+          </div>
+        </div>
+      </div>
+      <aside class="notes">
+        <span class="t-en">Show the broken JSON. Trailing comma, missing comma after the array. Real production failure mode. Ask the class who should own this problem — the model, the prompt, or the decoder.</span>
+        <span class="t-es">Muestra el JSON roto. Coma final, coma faltante tras el array. Falla real de producción. Pregunta al grupo a quién le toca arreglarlo — al modelo, al prompt o al decodificador.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE 3 — OBJECTIVES -->
+    <!-- ============================================================== -->
+    <section>
+      <h2>
+        <span class="t-en">Learning objectives</span>
+        <span class="t-es">Objetivos de aprendizaje</span>
+      </h2>
+      <p style="font-size: 0.75em;">
+        <span class="t-en">By the end of this class you will be able to:</span>
+        <span class="t-es">Al terminar esta clase podrás:</span>
+      </p>
+      <ol class="slim" style="font-size: 0.8em;">
+        <li class="fragment">
+          <strong><span class="t-en">Define</span><span class="t-es">Definir</span></strong>
+          <span class="t-en"> constrained decoding and why it beats post-hoc validation.</span>
+          <span class="t-es"> la decodificación restringida y por qué es mejor que validar después.</span>
+        </li>
+        <li class="fragment">
+          <strong><span class="t-en">Trace</span><span class="t-es">Trazar</span></strong>
+          <span class="t-en"> how a CFG becomes a <span class="hl">byte-level pushdown automaton</span>.</span>
+          <span class="t-es"> cómo una GLC se convierte en un <span class="hl">autómata de pila a nivel de bytes</span>.</span>
+        </li>
+        <li class="fragment">
+          <strong><span class="t-en">Distinguish</span><span class="t-es">Distinguir</span></strong>
+          <span class="t-en"> <span class="hl-ok">context-independent</span> from <span class="hl-warn">context-dependent</span> tokens.</span>
+          <span class="t-es"> tokens <span class="hl-ok">contexto-independientes</span> de los <span class="hl-warn">contexto-dependientes</span>.</span>
+        </li>
+        <li class="fragment">
+          <strong><span class="t-en">Describe</span><span class="t-es">Describir</span></strong>
+          <span class="t-en"> the per-step runtime algorithm that produces a vocabulary-sized bitmask in microseconds.</span>
+          <span class="t-es"> el algoritmo por paso que genera una bitmask del tamaño del vocabulario en microsegundos.</span>
+        </li>
+        <li class="fragment">
+          <strong><span class="t-en">Explain</span><span class="t-es">Explicar</span></strong>
+          <span class="t-en"> why XGrammar overlaps CPU mask generation with GPU inference.</span>
+          <span class="t-es"> por qué XGrammar solapa la generación de máscara en CPU con la inferencia en GPU.</span>
+        </li>
+      </ol>
+      <aside class="notes">
+        <span class="t-en">These map 1:1 to the five lecture blocks. The exit ticket will check 1, 3, and 5 explicitly.</span>
+        <span class="t-es">Estos mapean 1:1 a los cinco bloques de la clase. El ticket de salida revisa 1, 3 y 5 explícitamente.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE 4 — ROADMAP -->
+    <!-- ============================================================== -->
+    <section>
+      <h2>
+        <span class="t-en">Roadmap</span>
+        <span class="t-es">Mapa de ruta</span>
+      </h2>
+      <table>
+        <thead>
+          <tr>
+            <th><span class="t-en">Block</span><span class="t-es">Bloque</span></th>
+            <th><span class="t-en">Topic</span><span class="t-es">Tema</span></th>
+            <th><span class="t-en">Time</span><span class="t-es">Tiempo</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>A</td>
+            <td><span class="t-en">Hook & objectives</span><span class="t-es">Anzuelo y objetivos</span></td>
+            <td>10 min</td></tr>
+          <tr><td>B</td>
+            <td><span class="t-en">Constrained decoding 101</span><span class="t-es">Decodificación restringida 101</span></td>
+            <td>15 min</td></tr>
+          <tr><td>C</td>
+            <td><span class="t-en">Why naïve doesn't scale</span><span class="t-es">Por qué lo ingenuo no escala</span></td>
+            <td>10 min</td></tr>
+          <tr><td>D</td>
+            <td><span class="t-en">CFG → byte-level PDA</span><span class="t-es">GLC → APD a nivel de bytes</span></td>
+            <td>20 min</td></tr>
+          <tr><td>E</td>
+            <td><span class="t-en">Adaptive token mask cache</span><span class="t-es">Caché adaptativa de máscaras</span></td>
+            <td>20 min</td></tr>
+          <tr><td>F</td>
+            <td><span class="t-en">Persistent stack + CPU/GPU overlap</span><span class="t-es">Pila persistente + solapamiento CPU/GPU</span></td>
+            <td>10 min</td></tr>
+          <tr><td>G</td>
+            <td><span class="t-en">Activity + exit ticket</span><span class="t-es">Actividad + ticket de salida</span></td>
+            <td>5 min</td></tr>
+        </tbody>
+      </table>
+      <aside class="notes">
+        <span class="t-en">Time-boxed. Three check-for-understanding polls are baked in: after B+C, after D, and after E.</span>
+        <span class="t-es">Acotada en tiempo. Tres preguntas de chequeo: después de B+C, después de D y después de E.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- BLOCK B — CONSTRAINED DECODING 101 -->
+    <!-- ============================================================== -->
+
+    <section data-background-color="#0e7c66">
+      <div class="center" style="color: white;">
+        <p class="tag" style="background: white; color: var(--accent);">
+          <span class="t-en">Block B</span><span class="t-es">Bloque B</span>
+        </p>
+        <h1 style="color: white;">
+          <span class="t-en">Constrained decoding 101</span>
+          <span class="t-es">Decodificación restringida 101</span>
+        </h1>
+        <p style="color: #c8ecdf;">
+          <span class="t-en">The fundamentals</span>
+          <span class="t-es">Los fundamentos</span>
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE 6 — THE DECODE LOOP -->
+    <!-- ============================================================== -->
+    <section>
+      <h2>
+        <span class="t-en">The decode loop, with a mask</span>
+        <span class="t-es">El ciclo de decodificación, con máscara</span>
+      </h2>
+      <pre><code class="language-python" data-line-numbers="|2|3|4|5|6" data-trim>
+for _ in range(max_new_tokens):
+    logits = model(input_ids)                   # GPU forward → (seq, |V|)
+    logits[-1] += mask                          # mask only the next-token row: {0, -inf}^|V|
+    probs    = softmax(logits[-1])
+    next_tok = sample(probs)                    # top-k / nucleus / argmax
+    input_ids.append(next_tok)
+      </code></pre>
+      <p class="fragment" style="font-size: 0.75em;">
+        <span class="t-en">Adding the mask <em>before</em> <span class="glossary" data-term="softmax">softmax</span> kills illegal tokens (<code>-inf → 0</code> probability) and <span class="hl">preserves the relative ranking</span> of legal ones. The model's preferences are honored within the legal set.</span>
+        <span class="t-es">Sumar la máscara <em>antes</em> del <span class="glossary" data-term="softmax">softmax</span> mata los tokens ilegales (<code>-inf → 0</code> de probabilidad) y <span class="hl">preserva el ranking relativo</span> de los legales. Las preferencias del modelo se respetan dentro del conjunto legal.</span>
+      </p>
+      <aside class="notes">
+        <span class="t-en">Walk through line-by-line. Emphasize that masking before softmax is mathematically clean — relative probabilities of allowed tokens are preserved.</span>
+        <span class="t-es">Recorre línea por línea. Recalca que enmascarar antes del softmax es matemáticamente limpio — las probabilidades relativas de los tokens permitidos se preservan.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE 7 — VISUALIZING THE MASK -->
+    <!-- ============================================================== -->
+    <section>
+      <h2>
+        <span class="t-en">The mask is a bit per token</span>
+        <span class="t-es">La máscara es un bit por token</span>
+      </h2>
+      <div class="cols uneven">
+        <div>
+          <p style="font-size: 0.8em;">
+            <span class="t-en">For Llama-3 with <code>|V|=128k</code>:</span>
+            <span class="t-es">Para Llama-3 con <code>|V|=128k</code>:</span>
+          </p>
+          <ul class="slim" style="font-size: 0.75em;">
+            <li class="fragment">
+              <strong><span class="t-en">Shape:</span><span class="t-es">Forma:</span></strong>
+              <code>(batch, ⌈|V|/32⌉)</code>
+            </li>
+            <li class="fragment">
+              <strong><span class="t-en">Dtype:</span><span class="t-es">Tipo:</span></strong>
+              <code>int32</code>
+              <span class="t-en"> <span class="glossary" data-term="bitmask">bitset</span></span><span class="t-es"> <span class="glossary" data-term="bitmask">bitset</span></span>
+            </li>
+            <li class="fragment">
+              <strong><span class="t-en">Size:</span><span class="t-es">Tamaño:</span></strong>
+              <span class="t-en"> ~<span class="hl">4 KB</span> per request per step</span>
+              <span class="t-es"> ~<span class="hl">4 KB</span> por solicitud por paso</span>
+            </li>
+            <li class="fragment">
+              <span class="t-en">Lives on <code>CPU</code>, gets shipped to GPU before the apply step.</span>
+              <span class="t-es">Vive en <code>CPU</code>, se envía a GPU antes del paso de aplicación.</span>
+            </li>
+          </ul>
+        </div>
+        <div class="fragment">
+          <p style="font-size: 0.7em; color: var(--muted);">
+            <span class="t-en">Toy 32-token vocab, one decoding step:</span>
+            <span class="t-es">Vocabulario de juguete de 32 tokens, un paso:</span>
+          </p>
+          <div class="mask-grid" id="maskDemo"></div>
+          <p style="font-size: 0.65em; margin-top: 8px;">
+            <span style="display:inline-block; width:12px; height:12px; background: var(--ok); border-radius:2px; margin-right:4px;"></span>
+            <span class="t-en">allowed</span><span class="t-es">permitido</span>
+            &nbsp;
+            <span style="display:inline-block; width:12px; height:12px; background: var(--warn); border-radius:2px; margin-right:4px;"></span>
+            <span class="t-en">blocked</span><span class="t-es">bloqueado</span>
+          </p>
+        </div>
+      </div>
+      <aside class="notes">
+        <span class="t-en">Tell students to remember 4 KB — it comes back in the CPU/GPU overlap discussion.</span>
+        <span class="t-es">Pídeles recordar los 4 KB — vuelven en la discusión del solapamiento CPU/GPU.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE 8 — BLOCK C: NAIVE COST -->
+    <!-- ============================================================== -->
+    <section data-background-color="#fdf6e3">
+      <h2>
+        <span class="t-en">Why we can't just "run the parser per token"</span>
+        <span class="t-es">Por qué no podemos solo "correr el parser por token"</span>
+      </h2>
+      <div style="font-size: 0.85em;">
+        <p>
+          <span class="t-en">Per decoding step, naïvely:</span>
+          <span class="t-es">Por paso de decodificación, de forma ingenua:</span>
+        </p>
+        <ul class="slim">
+          <li class="fragment">
+            <span class="t-en">|V| = 128,000 token candidates</span>
+            <span class="t-es">|V| = 128,000 candidatos de token</span>
+          </li>
+          <li class="fragment">
+            <span class="t-en">Clone the parser, feed token bytes, see if it advances</span>
+            <span class="t-es">Clonar el parser, alimentarle los bytes del token, ver si avanza</span>
+          </li>
+          <li class="fragment">
+            <span class="t-en">If parser advance ≈ 1 µs/token → <span class="hl-warn">128 ms / step on the mask alone</span></span>
+            <span class="t-es">Si avanzar el parser ≈ 1 µs/token → <span class="hl-warn">128 ms / paso solo para la máscara</span></span>
+          </li>
+          <li class="fragment">
+            <span class="t-en">GPU forward (70B model) ≈ 25 ms/step</span>
+            <span class="t-es">Forward en GPU (modelo de 70B) ≈ 25 ms/paso</span>
+          </li>
+        </ul>
+        <div class="callout warn fragment" style="margin-top: 10px;">
+          <strong>
+            <span class="t-en">The mask is 5× slower than the model. Unacceptable.</span>
+            <span class="t-es">La máscara es 5× más lenta que el modelo. Inaceptable.</span>
+          </strong>
+        </div>
+        <p class="fragment" style="margin-top: 14px;">
+          <strong>
+            <span class="t-en">Saving graces:</span>
+            <span class="t-es">Lo que nos salva:</span>
+          </strong>
+          <span class="t-en"> the mask depends only on past tokens — so does the forward. They can <span class="hl-ok">run in parallel</span> if we make the mask cheap enough.</span>
+          <span class="t-es"> la máscara solo depende de los tokens previos — el forward también. Pueden <span class="hl-ok">correr en paralelo</span> si abaratamos la máscara lo suficiente.</span>
+        </p>
+      </div>
+      <aside class="notes">
+        <span class="t-en">Back-of-envelope from the pre-class reading. Sets up the rest of the lecture as: two ideas (compile-time precomputation and runtime sharing) make the mask cheap enough to hide behind the forward.</span>
+        <span class="t-es">Estimación de servilleta de la lectura previa. Encuadra el resto de la clase: dos ideas (precómputo en compilación y compartir trabajo en ejecución) abaratan la máscara lo suficiente para esconderla tras el forward.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE 9 — CHECK #1 -->
+    <!-- ============================================================== -->
+    <section data-background-color="#fffdf3">
+      <h2>
+        <span class="tag warn">
+          <span class="t-en">Check #1</span><span class="t-es">Pregunta #1</span>
+        </span>
+        <span class="t-en">Quick check</span>
+        <span class="t-es">Pregunta rápida</span>
+      </h2>
+      <div class="quiz">
+        <p>
+          <strong><span class="t-en">Q:</span><span class="t-es">P:</span></strong>
+          <span class="t-en"> Why do we add the mask <em>before</em> softmax instead of after?</span>
+          <span class="t-es"> ¿Por qué sumamos la máscara <em>antes</em> del softmax y no después?</span>
+        </p>
+        <ul class="opts" id="q1">
+          <li data-correct="false">
+            <span class="t-en">A. Because softmax is faster on masked inputs.</span>
+            <span class="t-es">A. Porque el softmax es más rápido sobre entradas enmascaradas.</span>
+          </li>
+          <li data-correct="true">
+            <span class="t-en">B. Because masking before softmax preserves the relative probabilities of legal tokens.</span>
+            <span class="t-es">B. Porque enmascarar antes del softmax preserva las probabilidades relativas de los tokens legales.</span>
+          </li>
+          <li data-correct="false">
+            <span class="t-en">C. Because the GPU only supports masked softmax.</span>
+            <span class="t-es">C. Porque la GPU solo soporta softmax enmascarado.</span>
+          </li>
+          <li data-correct="false">
+            <span class="t-en">D. Because <code>-inf + softmax</code> produces <code>NaN</code> we want to detect.</span>
+            <span class="t-es">D. Porque <code>-inf + softmax</code> produce <code>NaN</code> que queremos detectar.</span>
+          </li>
+        </ul>
+        <p class="reveal-answer fragment">
+          <strong><span class="t-en">Answer: B.</span><span class="t-es">Respuesta: B.</span></strong>
+          <span class="t-en"> Masking with <code>-inf</code> sends those tokens to probability 0 after softmax while the rest keep their relative ranking — the model's preferences are honored, only narrowed to the legal set.</span>
+          <span class="t-es"> Enmascarar con <code>-inf</code> manda esos tokens a probabilidad 0 tras el softmax, mientras los demás conservan su ranking relativo — las preferencias del modelo se respetan, solo se acotan al conjunto legal.</span>
+        </p>
+      </div>
+      <aside class="notes">
+        <span class="t-en">Let students answer first, then reveal. Most common wrong answer is A; address: softmax cost is unchanged.</span>
+        <span class="t-es">Deja que respondan primero, luego revela. El error más común es A; aclara: el costo del softmax no cambia.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- BLOCK D — PDA -->
+    <!-- ============================================================== -->
+
+    <section data-background-color="#0e7c66">
+      <div class="center" style="color: white;">
+        <p class="tag" style="background: white; color: var(--accent);">
+          <span class="t-en">Block D</span><span class="t-es">Bloque D</span>
+        </p>
+        <h1 style="color: white;">
+          <span class="t-en">CFG → byte-level PDA</span>
+          <span class="t-es">GLC → APD a nivel de bytes</span>
+        </h1>
+        <p style="color: #c8ecdf;">
+          <span class="t-en">From context-free grammar to pushdown automaton</span>
+          <span class="t-es">De la gramática libre de contexto al autómata de pila</span>
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE 11 — WHY A PDA -->
+    <!-- ============================================================== -->
+    <section>
+      <h2>
+        <span class="t-en">Why a pushdown automaton?</span>
+        <span class="t-es">¿Por qué un autómata de pila?</span>
+      </h2>
+      <div class="cols">
+        <div>
+          <p><strong><span class="glossary" data-term="fsa">FSA / AF</span></strong></p>
+          <ul class="slim" style="font-size: 0.8em;">
+            <li>
+              <span class="t-en">Recognizes regular languages</span>
+              <span class="t-es">Reconoce lenguajes regulares</span>
+            </li>
+            <li class="fragment">
+              <span class="hl-warn">
+                <span class="t-en">Cannot</span><span class="t-es">No puede</span>
+              </span>
+              <span class="t-en"> handle balanced delimiters: <code>{ { } }</code></span>
+              <span class="t-es"> manejar delimitadores balanceados: <code>{ { } }</code></span>
+            </li>
+            <li class="fragment">
+              <span class="t-en">JSON, arithmetic, code → not regular (need a <span class="glossary" data-term="cfg">CFG</span>)</span>
+              <span class="t-es">JSON, aritmética, código → no regulares (necesitan una <span class="glossary" data-term="cfg">GLC</span>)</span>
+            </li>
+          </ul>
+        </div>
+        <div>
+          <p><strong><span class="glossary" data-term="pda">PDA / APD</span></strong></p>
+          <ul class="slim" style="font-size: 0.8em;">
+            <li>
+              <span class="t-en">FSA <span class="hl">+ a stack</span></span>
+              <span class="t-es">AF <span class="hl">+ una pila</span></span>
+            </li>
+            <li class="fragment">
+              <span class="t-en">Recognizes context-free languages</span>
+              <span class="t-es">Reconoce lenguajes libres de contexto</span>
+            </li>
+            <li class="fragment">
+              <span class="t-en">Stack push/pop = enter/leave a nested rule</span>
+              <span class="t-es">Push/pop = entrar/salir de una regla anidada</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout fragment" style="margin-top: 20px;">
+        <strong>
+          <span class="t-en">XGrammar's twist:</span>
+          <span class="t-es">El giro de XGrammar:</span>
+        </strong>
+        <span class="t-en"> the PDA edges are labeled by <span class="hl">bytes</span>, not characters. This handles <span class="glossary" data-term="bpe">BPE</span> tokens that contain partial <span class="glossary" data-term="utf8">UTF-8 codepoints</span>.</span>
+        <span class="t-es"> las aristas del APD se etiquetan con <span class="hl">bytes</span>, no con caracteres. Esto maneja tokens <span class="glossary" data-term="bpe">BPE</span> que contienen <span class="glossary" data-term="utf8">codepoints UTF-8</span> parciales.</span>
+      </div>
+      <aside class="notes">
+        <span class="t-en">Most students have seen FSA vs PDA. Spend most time on "why bytes" — easy to miss but important.</span>
+        <span class="t-es">La mayoría ha visto AF vs APD. Dedica más tiempo a "por qué bytes" — fácil de pasar por alto pero importante.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE 12 — PDA CONSTRUCTION -->
+    <!-- ============================================================== -->
+    <section>
+      <h2>
+        <span class="t-en">Construction from <span class="glossary" data-term="ebnf">EBNF</span></span>
+        <span class="t-es">Construcción desde <span class="glossary" data-term="ebnf">EBNF</span></span>
+      </h2>
+      <div class="cols">
+        <div>
+          <pre><code class="language-ebnf" data-trim>
+expr ::= "(" expr ")"
+       | "a"
+          </code></pre>
+          <p style="font-size: 0.7em;">
+            <span class="t-en">One FSA per rule. Edges are either:</span>
+            <span class="t-es">Un AF por regla. Las aristas son:</span>
+          </p>
+          <ul class="slim" style="font-size: 0.7em;">
+            <li>
+              <strong><span class="t-en">Character edges</span><span class="t-es">Aristas de carácter</span></strong>
+              <span class="t-en"> — consume bytes</span>
+              <span class="t-es"> — consumen bytes</span>
+            </li>
+            <li>
+              <strong><span class="t-en">Rule references</span><span class="t-es">Referencias a regla</span></strong>
+              <span class="t-en"> — push return state, jump to start of referenced rule</span>
+              <span class="t-es"> — apilan el estado de retorno y saltan al inicio de la regla referenciada</span>
+            </li>
+          </ul>
+        </div>
+        <div>
+          <svg viewBox="0 0 400 280" style="width: 100%;">
+            <defs>
+              <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L9,3 z" fill="#333"/>
+              </marker>
+            </defs>
+            <circle cx="40"  cy="80"  r="20" fill="#fff" stroke="#0e7c66" stroke-width="2"/>
+            <text x="40"  y="85" text-anchor="middle" font-size="11">q0</text>
+            <circle cx="140" cy="80"  r="20" fill="#fff" stroke="#0e7c66" stroke-width="2"/>
+            <text x="140" y="85" text-anchor="middle" font-size="11">q1</text>
+            <circle cx="240" cy="80"  r="20" fill="#fff" stroke="#0e7c66" stroke-width="2"/>
+            <text x="240" y="85" text-anchor="middle" font-size="11">q2</text>
+            <circle cx="340" cy="80"  r="22" fill="#d3efe7" stroke="#0e7c66" stroke-width="3"/>
+            <circle cx="340" cy="80"  r="16" fill="none" stroke="#0e7c66" stroke-width="2"/>
+            <text x="340" y="85" text-anchor="middle" font-size="11">q3</text>
+            <line x1="60" y1="80" x2="120" y2="80" stroke="#333" marker-end="url(#arrow)"/>
+            <text x="90" y="74" text-anchor="middle" font-size="11" fill="#c0392b">"("</text>
+            <line x1="160" y1="80" x2="220" y2="80" stroke="#0e7c66" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+            <text x="190" y="74" text-anchor="middle" font-size="10" fill="#0e7c66" class="t-en">ref expr</text>
+            <text x="190" y="74" text-anchor="middle" font-size="10" fill="#0e7c66" class="t-es">ref expr</text>
+            <line x1="260" y1="80" x2="318" y2="80" stroke="#333" marker-end="url(#arrow)"/>
+            <text x="290" y="74" text-anchor="middle" font-size="11" fill="#c0392b">")"</text>
+            <path d="M40,100 Q 190,200 340,100" fill="none" stroke="#333" marker-end="url(#arrow)"/>
+            <text x="190" y="200" text-anchor="middle" font-size="11" fill="#c0392b">"a"</text>
+            <text x="200" y="250" text-anchor="middle" font-size="10" fill="#607080" class="t-en">solid = char edge · dashed = rule ref</text>
+            <text x="200" y="250" text-anchor="middle" font-size="10" fill="#607080" class="t-es">sólida = arista de carácter · punteada = ref. a regla</text>
+          </svg>
+        </div>
+      </div>
+      <aside class="notes">
+        <span class="t-en">Build the FSA on the board first if possible; this slide is the answer key. The dashed edge pushes q2 and re-enters q0.</span>
+        <span class="t-es">Si puedes, construye el AF en el pizarrón primero; esta diapositiva es la clave. La arista punteada apila q2 y reingresa a q0.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE 13 — STACK TRACE -->
+    <!-- ============================================================== -->
+    <section>
+      <h2>
+        <span class="t-en">Stack trace on input <code>(a)</code></span>
+        <span class="t-es">Traza de pila sobre la entrada <code>(a)</code></span>
+      </h2>
+      <p style="font-size: 0.7em;">
+        <span class="t-en">One level of recursion. Each fragment is one byte (or one auto-pop after accept).</span>
+        <span class="t-es">Un nivel de recursión. Cada fragmento es un byte (o un auto-pop tras aceptación).</span>
+      </p>
+      <svg viewBox="0 0 600 320" class="pda-svg" id="stackSvg">
+        <!-- Stack panel -->
+        <rect x="20" y="20" width="200" height="280" fill="#f6f7f9" stroke="#ccc"/>
+        <text x="120" y="40" text-anchor="middle" font-size="13" font-weight="700" fill="#14202b" class="t-en">Stack (top ↑)</text>
+        <text x="120" y="40" text-anchor="middle" font-size="13" font-weight="700" fill="#14202b" class="t-es">Pila (cima ↑)</text>
+
+        <!-- F1: bottom frame appears after consuming "(" — outer expr waiting for ')' -->
+        <g class="frame fragment fade-in" data-fragment-index="1">
+          <rect x="40" y="240" width="160" height="50" rx="4" fill="#d3efe7" stroke="#0e7c66" stroke-width="2"/>
+          <text x="120" y="262" text-anchor="middle" font-size="12" font-weight="600" fill="#14202b">expr (outer)</text>
+          <text x="120" y="280" text-anchor="middle" font-size="10" fill="#0e7c66" class="t-en">waiting for ')'</text>
+          <text x="120" y="280" text-anchor="middle" font-size="10" fill="#0e7c66" class="t-es">esperando ')'</text>
+        </g>
+
+        <!-- F2: inner frame appears on top after consuming "a" -->
+        <!-- (rule-ref push + take "a" branch + arrive at accept, all in one byte) -->
+        <g class="frame fragment fade-in" data-fragment-index="2">
+          <rect x="40" y="180" width="160" height="50" rx="4" fill="#fadbd8" stroke="#c0392b" stroke-width="2"/>
+          <text x="120" y="202" text-anchor="middle" font-size="12" font-weight="600" fill="#14202b">expr (inner)</text>
+          <text x="120" y="220" text-anchor="middle" font-size="10" fill="#c0392b" class="t-en">matched 'a' ✓ — auto-pop</text>
+          <text x="120" y="220" text-anchor="middle" font-size="10" fill="#c0392b" class="t-es">acepta 'a' ✓ — auto-pop</text>
+        </g>
+
+        <!-- F3: inner frame becomes gray/dashed (popped) — drawn on top of F2's rect -->
+        <g class="frame fragment fade-in" data-fragment-index="3">
+          <rect x="40" y="180" width="160" height="50" rx="4" fill="#f0f0f0" stroke="#999" stroke-width="1" stroke-dasharray="4 3"/>
+          <text x="120" y="210" text-anchor="middle" font-size="11" fill="#888" class="t-en">popped — gone</text>
+          <text x="120" y="210" text-anchor="middle" font-size="11" fill="#888" class="t-es">desapilado</text>
+        </g>
+
+        <!-- F4: outer frame turns dark-green "accepted ')'" then pops — drawn on top of F1's rect -->
+        <g class="frame fragment fade-in" data-fragment-index="4">
+          <rect x="40" y="240" width="160" height="50" rx="4" fill="#d5f5e3" stroke="#1e7a45" stroke-width="2"/>
+          <text x="120" y="262" text-anchor="middle" font-size="12" font-weight="600" fill="#14202b">expr (outer)</text>
+          <text x="120" y="280" text-anchor="middle" font-size="10" fill="#1e7a45" class="t-en">matched ')' ✓ — DONE</text>
+          <text x="120" y="280" text-anchor="middle" font-size="10" fill="#1e7a45" class="t-es">acepta ')' ✓ — LISTO</text>
+        </g>
+
+        <!-- Input strip -->
+        <text x="260" y="40" font-size="13" font-weight="700" fill="#14202b" class="t-en">Input consumed:</text>
+        <text x="260" y="40" font-size="13" font-weight="700" fill="#14202b" class="t-es">Entrada consumida:</text>
+        <text x="260" y="72" font-size="24" font-family="ui-monospace, monospace" font-weight="700" class="fragment" data-fragment-index="1">(</text>
+        <text x="285" y="72" font-size="24" font-family="ui-monospace, monospace" font-weight="700" class="fragment" data-fragment-index="2">a</text>
+        <text x="310" y="72" font-size="24" font-family="ui-monospace, monospace" font-weight="700" class="fragment" data-fragment-index="4">)</text>
+
+        <!-- Commentary -->
+        <foreignObject x="240" y="95" width="350" height="220">
+          <div xmlns="http://www.w3.org/1999/xhtml" style="font-size: 13px; line-height: 1.5; color: #14202b;">
+            <p class="fragment" data-fragment-index="1" style="margin: 4px 0;">
+              <strong>1.</strong>
+              <span class="t-en"> Consume <code>(</code>. Outer <code>expr</code> takes the <code>"("</code> edge, now waits for the matching <code>")"</code>.</span>
+              <span class="t-es"> Consume <code>(</code>. El <code>expr</code> exterior toma la arista <code>"("</code>, ahora espera el <code>")"</code> que cierra.</span>
+            </p>
+            <p class="fragment" data-fragment-index="2" style="margin: 4px 0;">
+              <strong>2.</strong>
+              <span class="t-en"> Consume <code>a</code>. The rule-reference edge pushes an inner <code>expr</code>; the <code>"a"</code> branch advances it to the accept state.</span>
+              <span class="t-es"> Consume <code>a</code>. La arista de referencia a regla apila un <code>expr</code> interno; la rama <code>"a"</code> lo lleva al estado de aceptación.</span>
+            </p>
+            <p class="fragment" data-fragment-index="3" style="margin: 4px 0;">
+              <strong>3.</strong>
+              <span class="t-en"> Inner <code>expr</code> is at accept → <strong>auto-pop</strong>. Control returns to outer, which is still waiting for <code>")"</code>.</span>
+              <span class="t-es"> El <code>expr</code> interno está en aceptación → <strong>auto-pop</strong>. El control vuelve al exterior, que sigue esperando <code>")"</code>.</span>
+            </p>
+            <p class="fragment" data-fragment-index="4" style="margin: 4px 0;">
+              <strong>4.</strong>
+              <span class="t-en"> Consume <code>)</code>. Outer accepts and pops. Stack empty → <strong>done.</strong></span>
+              <span class="t-es"> Consume <code>)</code>. El exterior acepta y desapila. Pila vacía → <strong>listo.</strong></span>
+            </p>
+          </div>
+        </foreignObject>
+      </svg>
+      <aside class="notes">
+        <span class="t-en">Key insight to verbalize: consuming "a" actually does three things in one byte — push inner expr via the rule-ref edge, take the "a" branch, and auto-pop because we're at accept. The animation separates the auto-pop into fragment 3 so students see it. After step 3, ask: what if the input had been "]"? Answer: no transition, parser rejects. Motivates the mask.</span>
+        <span class="t-es">Idea clave para decir en voz alta: consumir "a" hace tres cosas en un byte — apila el expr interno vía la referencia a regla, toma la rama "a", y auto-desapila porque está en aceptación. La animación separa el auto-pop en el fragmento 3 para que los alumnos lo vean. Tras el paso 3 pregunta: ¿qué pasaría si la entrada hubiera sido "]"? Respuesta: sin transición, el parser rechaza. Motiva la máscara.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE 14 — PARALLEL STACKS -->
+    <!-- ============================================================== -->
+    <section>
+      <h2>
+        <span class="t-en">Parallel stacks</span>
+        <span class="t-es">Pilas paralelas</span>
+      </h2>
+      <ul class="slim" style="font-size: 0.85em;">
+        <li class="fragment">
+          <span class="t-en">Real grammars are <span class="hl">ambiguous</span> — multiple productions match the same prefix.</span>
+          <span class="t-es">Las gramáticas reales son <span class="hl">ambiguas</span> — varias producciones casan con el mismo prefijo.</span>
+        </li>
+        <li class="fragment">
+          <span class="t-en">The matcher tracks <span class="hl">a <em>set</em> of stacks</span>, one per live parse.</span>
+          <span class="t-es">El matcher mantiene <span class="hl">un <em>conjunto</em> de pilas</span>, una por cada parseo vivo.</span>
+        </li>
+        <li class="fragment">
+          <span class="t-en">A token is accepted if <span class="hl-ok">any</span> stack accepts it.</span>
+          <span class="t-es">Un token se acepta si <span class="hl-ok">cualquiera</span> de las pilas lo acepta.</span>
+        </li>
+        <li class="fragment">
+          <span class="t-en">Masks across stacks are merged by <strong>union</strong>.</span>
+          <span class="t-es">Las máscaras se combinan por <strong>unión</strong> entre pilas.</span>
+        </li>
+      </ul>
+      <div class="callout fragment" style="margin-top: 20px;">
+        <span class="t-en">This is why we need rollback to be cheap: we test 100k+ tokens per step against multiple stacks. Block F shows the trick.</span>
+        <span class="t-es">Por eso necesitamos rollback barato: probamos 100k+ tokens por paso contra varias pilas. El bloque F muestra el truco.</span>
+      </div>
+      <aside class="notes">
+        <span class="t-en">Foreshadow the persistent stack. Don't go into the data structure yet — Block F.</span>
+        <span class="t-es">Anticipa la pila persistente. No entres todavía en la estructura — eso es el bloque F.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE 15 — CHECK #2 -->
+    <!-- ============================================================== -->
+    <section data-background-color="#fffdf3">
+      <h2>
+        <span class="tag warn">
+          <span class="t-en">Check #2</span><span class="t-es">Pregunta #2</span>
+        </span>
+        <span class="t-en">Quick check</span>
+        <span class="t-es">Pregunta rápida</span>
+      </h2>
+      <div class="quiz">
+        <p>
+          <strong><span class="t-en">Q:</span><span class="t-es">P:</span></strong>
+          <span class="t-en"> Why does XGrammar label PDA edges with <em>bytes</em> rather than characters?</span>
+          <span class="t-es"> ¿Por qué XGrammar etiqueta las aristas del APD con <em>bytes</em> y no con caracteres?</span>
+        </p>
+        <ul class="opts" id="q2">
+          <li data-correct="false">
+            <span class="t-en">A. Bytes use less memory than characters.</span>
+            <span class="t-es">A. Los bytes usan menos memoria que los caracteres.</span>
+          </li>
+          <li data-correct="true">
+            <span class="t-en">B. BPE tokens can contain partial UTF-8 codepoints, so byte-level edges let one token cleanly walk the FSA byte-by-byte.</span>
+            <span class="t-es">B. Los tokens BPE pueden contener codepoints UTF-8 parciales, así que las aristas a nivel de bytes dejan que un token recorra el AF byte por byte limpiamente.</span>
+          </li>
+          <li data-correct="false">
+            <span class="t-en">C. C++ doesn't have a Unicode type.</span>
+            <span class="t-es">C. C++ no tiene un tipo Unicode.</span>
+          </li>
+          <li data-correct="false">
+            <span class="t-en">D. The paper says CFGs only operate on bytes.</span>
+            <span class="t-es">D. El paper dice que las GLC solo operan sobre bytes.</span>
+          </li>
+        </ul>
+        <p class="reveal-answer fragment">
+          <strong><span class="t-en">Answer: B.</span><span class="t-es">Respuesta: B.</span></strong>
+          <span class="t-en"> A single BPE token may carry the first half of a multibyte codepoint. Byte-level edges sidestep that — the matcher walks bytes inside the token.</span>
+          <span class="t-es"> Un solo token BPE puede llevar la primera mitad de un codepoint multibyte. Las aristas a nivel de bytes esquivan eso — el matcher recorre bytes dentro del token.</span>
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- BLOCK E — ADAPTIVE TOKEN MASK CACHE -->
+    <!-- ============================================================== -->
+
+    <section data-background-color="#0e7c66">
+      <div class="center" style="color: white;">
+        <p class="tag" style="background: white; color: var(--accent);">
+          <span class="t-en">Block E</span><span class="t-es">Bloque E</span>
+        </p>
+        <h1 style="color: white;">
+          <span class="t-en">The adaptive token mask cache</span>
+          <span class="t-es">La caché adaptativa de máscaras</span>
+        </h1>
+        <p style="color: #c8ecdf;">
+          <span class="t-en">The heart of XGrammar</span>
+          <span class="t-es">El corazón de XGrammar</span>
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE 17 — KEY OBSERVATION -->
+    <!-- ============================================================== -->
+    <section>
+      <h2>
+        <span class="t-en">Key observation</span>
+        <span class="t-es">Observación clave</span>
+      </h2>
+      <p style="font-size: 0.85em;">
+        <span class="t-en">For <strong>most</strong> tokens, validity depends only on the <span class="hl">stack-top node</span>, not the rest of the stack.</span>
+        <span class="t-es">Para la <strong>mayoría</strong> de los tokens, la validez depende solo del <span class="hl">nodo cima de la pila</span>, no del resto.</span>
+      </p>
+      <ul class="slim" style="font-size: 0.8em;">
+        <li class="fragment">
+          <span class="t-en">Token stays in current rule, or pushes a child rule → top-only check works.</span>
+          <span class="t-es">El token sigue en la regla actual o apila una regla hija → basta mirar la cima.</span>
+        </li>
+        <li class="fragment">
+          <span class="t-en">Token <span class="hl-warn">finishes</span> the current rule and pops → need the full stack.</span>
+          <span class="t-es">El token <span class="hl-warn">termina</span> la regla actual y desapila → necesita toda la pila.</span>
+        </li>
+      </ul>
+      <div class="cols fragment" style="margin-top: 20px;">
+        <div class="callout">
+          <strong>
+            <span class="t-en">Context-independent</span>
+            <span class="t-es">Contexto-independientes</span>
+          </strong><br>
+          <span class="t-en">Decided by stack-top node alone.<br>→ precompute at compile time.</span>
+          <span class="t-es">Decididos solo con el nodo cima.<br>→ precalcular en tiempo de compilación.</span>
+        </div>
+        <div class="callout warn">
+          <strong>
+            <span class="t-en">Context-dependent</span>
+            <span class="t-es">Contexto-dependientes</span>
+          </strong><br>
+          <span class="t-en">Need the entire stack.<br>→ check at runtime only.</span>
+          <span class="t-es">Necesitan toda la pila.<br>→ revisar solo en tiempo de ejecución.</span>
+        </div>
+      </div>
+      <aside class="notes">
+        <span class="t-en">Central insight of the whole paper. Pause and let it land.</span>
+        <span class="t-es">La intuición central de todo el paper. Pausa y deja que aterrice.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE 18 — THE BIG NUMBER -->
+    <!-- ============================================================== -->
+    <section>
+      <h2>
+        <span class="t-en">How rare is "context-dependent"?</span>
+        <span class="t-es">¿Qué tan raros son los "contexto-dependientes"?</span>
+      </h2>
+      <div class="cols">
+        <div>
+          <p class="stat fragment">~1%</p>
+          <p class="stat-label">
+            <span class="t-en">of vocabulary is context-dependent at a typical PDA node</span>
+            <span class="t-es">del vocabulario es contexto-dependiente en un nodo típico del APD</span>
+          </p>
+        </div>
+        <div>
+          <p class="stat fragment">1,134 / 128k</p>
+          <p class="stat-label">
+            <span class="t-en">tokens, measured on Llama-3.1 with JSON</span>
+            <span class="t-es">tokens, medido en Llama-3.1 con JSON</span>
+          </p>
+        </div>
+      </div>
+      <div class="callout fragment" style="margin-top: 24px;">
+        <strong>
+          <span class="t-en">After <em>context expansion</em>:</span>
+          <span class="t-es">Tras la <em>expansión de contexto</em>:</span>
+        </strong>
+        <span class="t-en"> drops to ~<span class="hl">120 tokens</span> per step. The runtime only has to actually <em>run</em> the PDA for roughly a hundred tokens out of 128 thousand.</span>
+        <span class="t-es"> baja a ~<span class="hl">120 tokens</span> por paso. El runtime solo necesita <em>ejecutar</em> realmente el APD sobre unos cien tokens de 128 mil.</span>
+      </div>
+      <aside class="notes">
+        <span class="t-en">From the paper §3. Drop with appropriate weight — this is what makes constrained decoding "free."</span>
+        <span class="t-es">Del paper §3. Suéltalos con peso — esto es lo que hace que la decodificación restringida sea "gratis".</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE 19 — COMPILE vs RUNTIME -->
+    <!-- ============================================================== -->
+    <section>
+      <h2>
+        <span class="t-en">Compile time vs. runtime</span>
+        <span class="t-es">Tiempo de compilación vs. tiempo de ejecución</span>
+      </h2>
+      <div class="cols">
+        <div>
+          <h3>
+            <span class="t-en">At compile time (once)</span>
+            <span class="t-es">En compilación (una vez)</span>
+          </h3>
+          <ul class="slim" style="font-size: 0.75em;">
+            <li class="fragment">
+              <span class="t-en">Build PDA from CFG</span>
+              <span class="t-es">Construir el APD desde la GLC</span>
+            </li>
+            <li class="fragment">
+              <span class="t-en">For every PDA node <code>n</code>, partition <code>V</code> into<br>
+                <code>accepted<sub>CI</sub>(n) ∪ rejected<sub>CI</sub>(n) ∪ CD(n)</code></span>
+              <span class="t-es">Para cada nodo <code>n</code>, partir <code>V</code> en<br>
+                <code>aceptados<sub>CI</sub>(n) ∪ rechazados<sub>CI</sub>(n) ∪ CD(n)</code></span>
+            </li>
+            <li class="fragment">
+              <span class="t-en">Store in the <span class="hl">adaptive token mask cache</span></span>
+              <span class="t-es">Guardar en la <span class="hl">caché adaptativa</span></span>
+            </li>
+          </ul>
+        </div>
+        <div>
+          <h3>
+            <span class="t-en">At runtime (every step)</span>
+            <span class="t-es">En ejecución (cada paso)</span>
+          </h3>
+          <ul class="slim" style="font-size: 0.75em;">
+            <li class="fragment">
+              <span class="t-en">Look up cache for current node(s)</span>
+              <span class="t-es">Consultar la caché para el/los nodo(s) actuales</span>
+            </li>
+            <li class="fragment">
+              <span class="t-en">Actually run the PDA only on the ~120 CD tokens</span>
+              <span class="t-es">Ejecutar realmente el APD solo sobre los ~120 tokens CD</span>
+            </li>
+            <li class="fragment">
+              <span class="t-en">Union the masks across parallel stacks</span>
+              <span class="t-es">Unir las máscaras de las pilas paralelas</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <pre class="fragment" style="margin-top: 18px;"><code class="language-python" data-trim>
+# Pseudo-code: one runtime step
+def fill_next_token_bitmask(stacks):
+    mask = empty_bitmask(|V|)
+    for top in {s.top for s in stacks}:
+        ci_accept, ci_reject, cd_set = cache[top]
+        mask |= ci_accept
+        for tok in cd_set:
+            if pda_advance_ok(stacks, tok):
+                mask.set(tok)
+    return mask
+      </code></pre>
+      <aside class="notes">
+        <span class="t-en">Pseudo-code crystallizes the algorithm. We still iterate over CD per stack-top — but only ~120 tokens.</span>
+        <span class="t-es">El pseudocódigo cristaliza el algoritmo. Aún iteramos sobre CD por cada cima — pero son solo ~120 tokens.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE 20 — ADAPTIVE STORAGE -->
+    <!-- ============================================================== -->
+    <section>
+      <h2>
+        <span class="t-en">"Adaptive" storage — three options</span>
+        <span class="t-es">Almacenamiento "adaptativo" — tres opciones</span>
+      </h2>
+      <table>
+        <thead>
+          <tr>
+            <th><span class="t-en">Case</span><span class="t-es">Caso</span></th>
+            <th><span class="t-en">Store</span><span class="t-es">Almacenar</span></th>
+            <th><span class="t-en">Why</span><span class="t-es">Por qué</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="fragment">
+            <td><span class="hl-ok">
+              <span class="t-en">Mostly accepted</span><span class="t-es">Mayoría aceptados</span>
+            </span></td>
+            <td><code>rejected<sub>CI</sub> ∪ CD</code></td>
+            <td>
+              <span class="t-en">Negative set is tiny</span>
+              <span class="t-es">El conjunto negativo es diminuto</span>
+            </td>
+          </tr>
+          <tr class="fragment">
+            <td><span class="hl-warn">
+              <span class="t-en">Mostly rejected</span><span class="t-es">Mayoría rechazados</span>
+            </span></td>
+            <td><code>accepted<sub>CI</sub> ∪ CD</code></td>
+            <td>
+              <span class="t-en">Positive set is tiny</span>
+              <span class="t-es">El conjunto positivo es diminuto</span>
+            </td>
+          </tr>
+          <tr class="fragment">
+            <td><span class="t-en">Balanced</span><span class="t-es">Equilibrado</span></td>
+            <td><code>|V|</code>-bit bitset</td>
+            <td>
+              <span class="t-en">Sparse sets would be bigger than a bitmap</span>
+              <span class="t-es">Los conjuntos dispersos serían más grandes que un bitmap</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="cols fragment" style="margin-top: 28px; align-items: center;">
+        <div class="center">
+          <p class="stat" style="color: #c0392b;">~160 MB</p>
+          <p class="stat-label">
+            <span class="t-en">naïve per-node bitmasks</span>
+            <span class="t-es">bitmasks ingenuas por nodo</span>
+          </p>
+        </div>
+        <div class="center">
+          <p class="stat" style="color: var(--ok);">0.46 MB</p>
+          <p class="stat-label">
+            <span class="t-en">with adaptive storage</span>
+            <span class="t-es">con almacenamiento adaptativo</span>
+          </p>
+        </div>
+      </div>
+      <p class="fragment center" style="font-size: 0.7em; color: var(--muted); margin-top: 10px;">
+        <span class="t-en">Llama-3.1 + JSON. ~350× smaller. Source: XGrammar paper §3.</span>
+        <span class="t-es">Llama-3.1 + JSON. ~350× más pequeño. Fuente: paper de XGrammar §3.</span>
+      </p>
+      <aside class="notes">
+        <span class="t-en">The 350× compression makes this practical — without it the cache wouldn't fit in L2/L3 and we'd lose the latency advantage.</span>
+        <span class="t-es">La compresión de 350× lo hace práctico — sin ella la caché no cabría en L2/L3 y perderíamos la ventaja de latencia.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE 21 — WORKED EXAMPLE -->
+    <!-- ============================================================== -->
+    <section>
+      <h2>
+        <span class="t-en">Worked example — classify the tokens</span>
+        <span class="t-es">Ejemplo guiado — clasifica los tokens</span>
+      </h2>
+      <pre><code class="language-ebnf" data-trim>
+list  ::= "[" elems "]"
+elems ::= digit ("," digit)*
+digit ::= "0" | "1" | "2"
+      </code></pre>
+      <p style="font-size: 0.75em;">
+        <span class="t-en">You are at the PDA node right after consuming <code>[</code>. Classify:</span>
+        <span class="t-es">Estás en el nodo del APD justo después de consumir <code>[</code>. Clasifica:</span>
+      </p>
+
+      <div class="mask-grid" id="exampleMask" style="grid-template-columns: repeat(10, 1fr); max-width: 600px; margin: 14px 0;"></div>
+      <p style="font-size: 0.65em; color: var(--muted);">
+        <span class="t-en">Tokens (left→right):</span>
+        <span class="t-es">Tokens (izq→der):</span>
+        <code>[ ] 0 1 2 , [0 0] 00 X</code>
+      </p>
+
+      <ul class="slim fragment" style="font-size: 0.7em;">
+        <li>
+          <span class="hl-ok">
+            <span class="t-en">Accepted CI:</span><span class="t-es">CI aceptados:</span>
+          </span>
+          <code>0 1 2</code>
+          <span class="t-en"> — advance within <code>digit</code></span>
+          <span class="t-es"> — avanzan dentro de <code>digit</code></span>
+        </li>
+        <li>
+          <span class="hl-warn">
+            <span class="t-en">Rejected CI:</span><span class="t-es">CI rechazados:</span>
+          </span>
+          <code>[ ] , [0 00 X</code>
+          <span class="t-en"> — no valid transition from this node</span>
+          <span class="t-es"> — sin transición válida desde este nodo</span>
+        </li>
+        <li>
+          <strong style="color: #b8860b;">
+            <span class="t-en">Context-dependent:</span><span class="t-es">Contexto-dependiente:</span>
+          </strong>
+          <code>0]</code>
+          <span class="t-en"> — second byte triggers a pop into the parent <code>list</code> rule</span>
+          <span class="t-es"> — el segundo byte dispara un pop hacia la regla padre <code>list</code></span>
+        </li>
+      </ul>
+      <aside class="notes">
+        <span class="t-en">Distribute the handout. 90 seconds to solve. The trick token is <code>0]</code> — the one that exercises the context-dependent path.</span>
+        <span class="t-es">Reparte el handout. 90 segundos para resolver. El token clave es <code>0]</code> — el que ejercita la ruta contexto-dependiente.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE 22 — CHECK #3 -->
+    <!-- ============================================================== -->
+    <section data-background-color="#fffdf3">
+      <h2>
+        <span class="tag warn">
+          <span class="t-en">Check #3</span><span class="t-es">Pregunta #3</span>
+        </span>
+        <span class="t-en">Quick check</span>
+        <span class="t-es">Pregunta rápida</span>
+      </h2>
+      <div class="quiz">
+        <p>
+          <strong><span class="t-en">Q:</span><span class="t-es">P:</span></strong>
+          <span class="t-en"> Why isn't the cache simply a <code>|V|</code>-bit mask per PDA node, always?</span>
+          <span class="t-es"> ¿Por qué la caché no es siempre, simplemente, una máscara de <code>|V|</code> bits por nodo del APD?</span>
+        </p>
+        <ul class="opts" id="q3">
+          <li data-correct="false">
+            <span class="t-en">A. It would be too slow to look up.</span>
+            <span class="t-es">A. Sería demasiado lento consultarla.</span>
+          </li>
+          <li data-correct="true">
+            <span class="t-en">B. It would use too much memory — most nodes have very skewed accept/reject ratios, so storing the smaller subset is cheaper.</span>
+            <span class="t-es">B. Usaría demasiada memoria — la mayoría de los nodos tienen ratios aceptar/rechazar muy sesgados, así que guardar el subconjunto más pequeño sale más barato.</span>
+          </li>
+          <li data-correct="false">
+            <span class="t-en">C. Bitmasks can't represent "context-dependent".</span>
+            <span class="t-es">C. Las bitmasks no pueden representar "contexto-dependiente".</span>
+          </li>
+          <li data-correct="false">
+            <span class="t-en">D. Lookup needs a hash for sparse cases.</span>
+            <span class="t-es">D. La consulta necesita un hash para casos dispersos.</span>
+          </li>
+        </ul>
+        <p class="reveal-answer fragment">
+          <strong><span class="t-en">Answer: B.</span><span class="t-es">Respuesta: B.</span></strong>
+          <span class="t-en"> 160 MB → 0.46 MB compression comes from storing only the smaller of {accepted, rejected} per node, plus the tiny CD set. The bitmap is used only when they're roughly balanced.</span>
+          <span class="t-es"> La compresión de 160 MB → 0.46 MB viene de guardar solo el menor de {aceptados, rechazados} por nodo, más el diminuto conjunto CD. El bitmap solo se usa cuando están equilibrados.</span>
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- BLOCK F — PERSISTENT STACK + OVERLAP -->
+    <!-- ============================================================== -->
+
+    <section data-background-color="#0e7c66">
+      <div class="center" style="color: white;">
+        <p class="tag" style="background: white; color: var(--accent);">
+          <span class="t-en">Block F</span><span class="t-es">Bloque F</span>
+        </p>
+        <h1 style="color: white;">
+          <span class="t-en">Persistent stack + CPU/GPU overlap</span>
+          <span class="t-es">Pila persistente + solapamiento CPU/GPU</span>
+        </h1>
+        <p style="color: #c8ecdf;">
+          <span class="t-en">How the remaining cost disappears</span>
+          <span class="t-es">Cómo desaparece el costo restante</span>
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE 24 — PERSISTENT STACK -->
+    <!-- ============================================================== -->
+    <section>
+      <h2>
+        <span class="t-en"><span class="glossary" data-term="persistent">Persistent execution stack</span></span>
+        <span class="t-es"><span class="glossary" data-term="persistent">Pila de ejecución persistente</span></span>
+      </h2>
+      <p style="font-size: 0.8em;">
+        <span class="t-en">We test ~120 CD tokens per step. Naïvely copying the stack each time → quadratic.</span>
+        <span class="t-es">Probamos ~120 tokens CD por paso. Copiar la pila cada vez de forma ingenua → cuadrático.</span>
+      </p>
+      <p style="font-size: 0.8em;" class="fragment">
+        <strong>
+          <span class="t-en">Trick</span><span class="t-es">Truco</span>
+        </strong>
+        <span class="t-en"> (Driscoll, Sarnak, Sleator, Tarjan, 1989): store all stacks as a <span class="hl">tree</span>. A "stack" is just a pointer to a tree node; the path to the root reconstructs the stack.</span>
+        <span class="t-es"> (Driscoll, Sarnak, Sleator, Tarjan, 1989): guardar todas las pilas como un <span class="hl">árbol</span>. Una "pila" es solo un puntero a un nodo del árbol; el camino a la raíz reconstruye la pila.</span>
+      </p>
+      <div class="cols fragment" style="margin-top: 18px;">
+        <div class="callout">
+          <strong>
+            <span class="t-en">Forking</span><span class="t-es">Bifurcar</span>
+          </strong>
+          <span class="t-en"> = one pointer write</span>
+          <span class="t-es"> = una escritura de puntero</span>
+          &nbsp;<code>O(1)</code>
+        </div>
+        <div class="callout">
+          <strong>
+            <span class="t-en">Rollback</span><span class="t-es">Revertir</span>
+          </strong>
+          <span class="t-en"> = swap the pointer back</span>
+          <span class="t-es"> = intercambiar el puntero de vuelta</span>
+          &nbsp;<code>O(1)</code>
+        </div>
+      </div>
+      <div class="callout fragment" style="margin-top: 14px;">
+        <strong>
+          <span class="t-en">Plus:</span><span class="t-es">Además:</span>
+        </strong>
+        <span class="t-en"> sort candidate tokens lexicographically and roll back only to the longest common prefix between successive tests. Drops per-step byte work to <span class="hl">~30%</span>.</span>
+        <span class="t-es"> ordena los tokens candidatos lexicográficamente y revierte solo hasta el prefijo común más largo entre pruebas sucesivas. Reduce el trabajo de bytes por paso al <span class="hl">~30%</span>.</span>
+      </div>
+      <aside class="notes">
+        <span class="t-en">Formal-CS students will love the Driscoll paper. Classic persistent data structures applied to a 2024 ML systems problem.</span>
+        <span class="t-es">A los alumnos de CS teórica les encantará el paper de Driscoll. Estructuras persistentes clásicas aplicadas a un problema de ML systems de 2024.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE 25 — CPU/GPU OVERLAP -->
+    <!-- ============================================================== -->
+    <section>
+      <h2>
+        <span class="t-en">The CPU / GPU swimlane</span>
+        <span class="t-es">Los carriles CPU / GPU</span>
+      </h2>
+
+      <div style="font-size: 0.85em; margin: 14px 0;">
+        <span class="t-en">Mask generation needs <strong>only past tokens</strong>. Transformer forward needs <strong>only past tokens</strong>. They can run in parallel and only synchronize at the sampler.</span>
+        <span class="t-es">Generar la máscara solo necesita <strong>los tokens previos</strong>. El forward del transformer también. Pueden correr en paralelo y solo se sincronizan en el sampler.</span>
+      </div>
+
+      <!-- CSS-grid swimlane: row 1 = GPU, row 2 = CPU, columns shared so blocks line up vertically.
+           Column widths: forward = 2fr (wide), sample = 1fr (narrow), reflecting real time costs. -->
+      <div class="swimlane">
+        <!-- Row 1: GPU -->
+        <div class="lane-label">GPU</div>
+        <div class="block gpu  fragment" data-fragment-index="1">forward(t)</div>
+        <div class="block sync fragment" data-fragment-index="3">sample(t)</div>
+        <div class="block gpu  fragment" data-fragment-index="4">forward(t+1)</div>
+        <div class="block sync fragment" data-fragment-index="6">sample(t+1)</div>
+        <div class="block gpu  fragment" data-fragment-index="7">forward(t+2)</div>
+
+        <!-- Row 2: CPU — each cell sits BELOW the GPU cell it runs in parallel with -->
+        <div class="lane-label">CPU</div>
+        <div class="block cpu        fragment" data-fragment-index="2">mask(t)</div>
+        <div class="block cpu accept fragment" data-fragment-index="3">accept(t)</div>
+        <div class="block cpu        fragment" data-fragment-index="5">mask(t+1)</div>
+        <div class="block cpu accept fragment" data-fragment-index="6">accept(t+1)</div>
+        <div class="block cpu        fragment" data-fragment-index="8">mask(t+2)</div>
+
+        <!-- Time axis -->
+        <div class="swimlane-axis">
+          <span>t →</span>
+          <span class="t-en">wall-clock time</span>
+          <span class="t-es">tiempo real</span>
+        </div>
+      </div>
+
+      <div class="callout fragment" style="margin-top: 14px;">
+        <span class="t-en">Mask generation is well under the per-step GPU budget → <span class="hl">disappears from the critical path</span>. End-to-end overhead measured at <strong>~0%</strong> with vLLM / MLC-LLM.</span>
+        <span class="t-es">Generar la máscara está muy por debajo del presupuesto GPU por paso → <span class="hl">desaparece del camino crítico</span>. Sobrecarga end-to-end medida en <strong>~0%</strong> con vLLM / MLC-LLM.</span>
+      </div>
+      <aside class="notes">
+        <span class="t-en">Step through fragments to animate the swimlane. Takeaway: constrained decoding becomes free when (a) mask is small enough and (b) you overlap with GPU. XGrammar does both.</span>
+        <span class="t-es">Avanza paso a paso para animar los carriles. Cierre: la decodificación restringida se vuelve gratis cuando (a) la máscara es lo suficientemente pequeña y (b) la solapas con la GPU. XGrammar hace ambas.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE 26 — IMPACT -->
+    <!-- ============================================================== -->
+    <section>
+      <h2>
+        <span class="t-en">Impact in practice</span>
+        <span class="t-es">Impacto en la práctica</span>
+      </h2>
+      <div class="cols">
+        <div class="center">
+          <p class="stat">100×</p>
+          <p class="stat-label">
+            <span class="t-en">lower per-token mask latency vs. prior libraries</span>
+            <span class="t-es">menor latencia de máscara por token vs. librerías previas</span>
+          </p>
+        </div>
+        <div class="center">
+          <p class="stat">~0%</p>
+          <p class="stat-label">
+            <span class="t-en">end-to-end overhead with fast inference engines</span>
+            <span class="t-es">sobrecarga end-to-end con motores de inferencia rápidos</span>
+          </p>
+        </div>
+      </div>
+      <p class="fragment" style="margin-top: 30px; text-align: center; font-size: 0.85em;">
+        <span class="t-en">Default backend in <strong>vLLM</strong>, <strong>SGLang</strong>, <strong>TensorRT-LLM</strong>, and <strong>MLC-LLM</strong>.</span>
+        <span class="t-es">Backend por defecto en <strong>vLLM</strong>, <strong>SGLang</strong>, <strong>TensorRT-LLM</strong> y <strong>MLC-LLM</strong>.</span>
+      </p>
+      <aside class="notes">
+        <span class="t-en">Numbers from the paper, page 1. Use as the closing soundbite for this block.</span>
+        <span class="t-es">Números del paper, página 1. Úsalos como cierre del bloque.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- BLOCK G — WRAP-UP -->
+    <!-- ============================================================== -->
+
+    <section data-background-color="#0e7c66">
+      <div class="center" style="color: white;">
+        <p class="tag" style="background: white; color: var(--accent);">
+          <span class="t-en">Block G</span><span class="t-es">Bloque G</span>
+        </p>
+        <h1 style="color: white;">
+          <span class="t-en">Wrap-up & exit ticket</span>
+          <span class="t-es">Cierre y ticket de salida</span>
+        </h1>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE 28 — KEY TAKEAWAYS -->
+    <!-- ============================================================== -->
+    <section>
+      <h2>
+        <span class="t-en">Five takeaways</span>
+        <span class="t-es">Cinco ideas para llevar</span>
+      </h2>
+      <ol class="slim" style="font-size: 0.8em;">
+        <li class="fragment">
+          <span class="t-en">Constrained decoding = <span class="hl">mask the logits before softmax</span>. 100% structural correctness, no model surgery.</span>
+          <span class="t-es">Decodificación restringida = <span class="hl">enmascarar los logits antes del softmax</span>. 100% de corrección estructural, sin tocar el modelo.</span>
+        </li>
+        <li class="fragment">
+          <span class="t-en">A <span class="hl">byte-level PDA</span> handles CFGs and BPE tokens cleanly.</span>
+          <span class="t-es">Un <span class="hl">APD a nivel de bytes</span> maneja GLCs y tokens BPE de forma limpia.</span>
+        </li>
+        <li class="fragment">
+          <span class="t-en">~99% of tokens at any PDA node are <span class="hl-ok">context-independent</span> and can be cached.</span>
+          <span class="t-es">El ~99% de los tokens en cualquier nodo del APD son <span class="hl-ok">contexto-independientes</span> y pueden cachearse.</span>
+        </li>
+        <li class="fragment">
+          <span class="t-en"><span class="hl">Adaptive storage</span> (smaller of accepted/rejected) shrinks the cache by ~350×.</span>
+          <span class="t-es">El <span class="hl">almacenamiento adaptativo</span> (el menor entre aceptados/rechazados) reduce la caché ~350×.</span>
+        </li>
+        <li class="fragment">
+          <span class="t-en"><span class="hl">Persistent stacks + CPU/GPU overlap</span> hide the remaining cost behind the forward pass.</span>
+          <span class="t-es">Las <span class="hl">pilas persistentes + el solapamiento CPU/GPU</span> esconden el costo restante tras el forward.</span>
+        </li>
+      </ol>
+      <aside class="notes">
+        <span class="t-en">These five mirror the learning objectives 1:1. Verbal recap before the exit ticket.</span>
+        <span class="t-es">Estos cinco reflejan los objetivos de aprendizaje 1:1. Recapitula verbalmente antes del ticket.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE 29 — EXIT TICKET -->
+    <!-- ============================================================== -->
+    <section>
+      <h2>
+        <span class="t-en">Exit ticket</span>
+        <span class="t-es">Ticket de salida</span>
+      </h2>
+      <ol style="font-size: 0.8em;">
+        <li class="fragment">
+          <span class="t-en">Define <span class="hl-ok">context-independent</span> vs <span class="hl-warn">context-dependent</span> tokens in one sentence each.</span>
+          <span class="t-es">Define en una oración cada uno: tokens <span class="hl-ok">contexto-independientes</span> vs <span class="hl-warn">contexto-dependientes</span>.</span>
+        </li>
+        <li class="fragment">
+          <span class="t-en">In the example grammar, after consuming <code>[0</code>, is <code>,</code> accepted, rejected, or context-dependent? Justify.</span>
+          <span class="t-es">En la gramática del ejemplo, tras consumir <code>[0</code>, ¿el token <code>,</code> es aceptado, rechazado o contexto-dependiente? Justifica.</span>
+        </li>
+        <li class="fragment">
+          <span class="t-en">In two sentences, why doesn't CPU mask generation add latency to the decode loop in practice?</span>
+          <span class="t-es">En dos oraciones, ¿por qué la generación de máscara en CPU no añade latencia al ciclo de decodificación en la práctica?</span>
+        </li>
+      </ol>
+      <p style="margin-top: 20px; color: var(--muted);">
+        <span class="t-en">Hand in on an index card on your way out.</span>
+        <span class="t-es">Entrega en una tarjeta al salir.</span>
+      </p>
+      <aside class="notes">
+        <span class="t-en">Index cards or Mentimeter. Use answers to calibrate the next session.</span>
+        <span class="t-es">Tarjetas o Mentimeter. Usa las respuestas para calibrar la siguiente sesión.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE 30 — REFERENCES -->
+    <!-- ============================================================== -->
+    <section>
+      <h2>
+        <span class="t-en">References</span>
+        <span class="t-es">Referencias</span>
+      </h2>
+      <ul style="font-size: 0.7em;">
+        <li>Dong et al. (2024). <em>XGrammar: Flexible and Efficient Structured Generation Engine for Large Language Models.</em>
+          <a href="https://arxiv.org/abs/2411.15100">arXiv:2411.15100</a></li>
+        <li>MLC blog (Nov 2024). <em>Achieving Efficient, Flexible, and Portable Structured Generation with XGrammar.</em>
+          <a href="https://blog.mlc.ai/2024/11/22/achieving-efficient-flexible-portable-structured-generation-with-xgrammar">blog.mlc.ai</a></li>
+        <li>
+          <span class="t-en">XGrammar docs — Workflow:</span>
+          <span class="t-es">Docs de XGrammar — Workflow:</span>
+          <a href="https://xgrammar.mlc.ai/docs/tutorials/workflow_of_xgrammar.html">xgrammar.mlc.ai/docs</a>
+        </li>
+        <li>GitHub: <a href="https://github.com/mlc-ai/xgrammar">mlc-ai/xgrammar</a></li>
+        <li>Driscoll, Sarnak, Sleator, Tarjan (1989). <em>Making Data Structures Persistent.</em></li>
+      </ul>
+      <p style="font-size: 0.65em; margin-top: 30px; color: var(--muted);">
+        <span class="t-en">Companion lesson plan:</span>
+        <span class="t-es">Plan de clase complementario:</span>
+        <code>xgrammar_lesson_plan_90min.md</code>
+      </p>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- BLOCK H — HANDS-ON LAB -->
+    <!-- ============================================================== -->
+
+    <section data-background-color="#0e7c66">
+      <div class="center" style="color: white;">
+        <p class="tag" style="background: white; color: var(--accent);">
+          <span class="t-en">Block H</span><span class="t-es">Bloque H</span>
+        </p>
+        <h1 style="color: white;">
+          <span class="t-en">Hands-on lab: programmatic use &amp; integrations</span>
+          <span class="t-es">Laboratorio: uso programático e integraciones</span>
+        </h1>
+        <p style="color: #c8ecdf;">
+          <span class="t-en">30 minutes · open the notebook now</span>
+          <span class="t-es">30 minutos · abran el notebook ahora</span>
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE H.0 — MEET THE TOOLS -->
+    <!-- ============================================================== -->
+    <section>
+      <h2>
+        <span class="t-en">Meet the tools you'll see</span>
+        <span class="t-es">Conoce las herramientas que verás</span>
+      </h2>
+      <p style="font-size: 0.7em; color: var(--muted);">
+        <span class="t-en">A 30-second intro to each. All four use XGrammar under the hood.</span>
+        <span class="t-es">Una intro de 30 segundos a cada una. Las cuatro usan XGrammar por debajo.</span>
+      </p>
+
+      <div class="ecosystem">
+        <!-- HF Transformers + LogitsProcessor -->
+        <div class="eco-card">
+          <div class="eco-title">
+            <span class="eco-tag">Library</span>
+            HF Transformers
+          </div>
+          <div class="eco-body">
+            <span class="t-en">
+              The de-facto Python library for transformer models — load any HuggingFace model in one line.
+              A <strong>LogitsProcessor</strong> is a callback that runs inside <code>model.generate()</code>
+              and can <em>edit the logits</em> before sampling. XGrammar ships one (<code>xgr.contrib.hf.LogitsProcessor</code>)
+              that applies the bitmask. Easiest way to try constrained decoding.
+            </span>
+            <span class="t-es">
+              La librería estándar de Python para modelos transformer — carga cualquier modelo de HuggingFace en una línea.
+              Un <strong>LogitsProcessor</strong> es un callback que corre dentro de <code>model.generate()</code>
+              y puede <em>editar los logits</em> antes del muestreo. XGrammar trae uno (<code>xgr.contrib.hf.LogitsProcessor</code>)
+              que aplica la bitmask. La vía más fácil para probar decodificación restringida.
+            </span>
+          </div>
+        </div>
+
+        <!-- vLLM -->
+        <div class="eco-card">
+          <div class="eco-title">
+            <span class="eco-tag">Server</span>
+            vLLM
+          </div>
+          <div class="eco-body">
+            <span class="t-en">
+              High-throughput LLM serving library from <strong>UC Berkeley</strong>. Famous for
+              <strong>PagedAttention</strong> (efficient KV-cache memory). Most popular open-source
+              inference server in production. Exposes an OpenAI-compatible HTTP API.
+              XGrammar is its default structured-output backend.
+            </span>
+            <span class="t-es">
+              Librería de serving de LLMs de alto throughput de <strong>UC Berkeley</strong>. Famosa por
+              <strong>PagedAttention</strong> (memoria de KV-cache eficiente). El servidor de inferencia
+              open-source más popular en producción. Expone una API HTTP compatible con OpenAI.
+              XGrammar es su backend por defecto para salidas estructuradas.
+            </span>
+          </div>
+        </div>
+
+        <!-- SGLang -->
+        <div class="eco-card">
+          <div class="eco-title">
+            <span class="eco-tag">Framework</span>
+            SGLang
+          </div>
+          <div class="eco-body">
+            <span class="t-en">
+              LLM serving runtime <em>plus</em> a frontend DSL for orchestrating multi-step prompts.
+              Built by the <strong>LMSYS</strong> team (the same group behind Chatbot Arena).
+              Optimized for structured tasks, agents, and tool-calling.
+              XGrammar is the default <code>grammar_backend</code>.
+            </span>
+            <span class="t-es">
+              Runtime de serving de LLMs <em>más</em> un DSL frontend para orquestar prompts multi-paso.
+              Hecho por el equipo de <strong>LMSYS</strong> (los mismos detrás de Chatbot Arena).
+              Optimizado para tareas estructuradas, agentes y tool-calling.
+              XGrammar es el <code>grammar_backend</code> por defecto.
+            </span>
+          </div>
+        </div>
+
+        <!-- MLC-LLM -->
+        <div class="eco-card">
+          <div class="eco-title">
+            <span class="eco-tag">Compiler</span>
+            MLC-LLM
+          </div>
+          <div class="eco-body">
+            <span class="t-en">
+              "<strong>M</strong>achine <strong>L</strong>earning <strong>C</strong>ompilation" for LLMs,
+              from <strong>CMU</strong> and collaborators — <em>same authors as XGrammar</em>.
+              Compiles models to Apple Silicon (Metal), WebGPU (in-browser via WebLLM), Android, iOS.
+              The only path here for offline-first or mobile deployment.
+            </span>
+            <span class="t-es">
+              "<strong>M</strong>achine <strong>L</strong>earning <strong>C</strong>ompilation" para LLMs,
+              de <strong>CMU</strong> y colaboradores — <em>mismos autores que XGrammar</em>.
+              Compila modelos a Apple Silicon (Metal), WebGPU (en el navegador vía WebLLM), Android, iOS.
+              La única vía aquí para despliegue offline-first o móvil.
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <p class="fragment" style="font-size: 0.7em; margin-top: 14px; color: var(--muted); text-align: center;">
+        <span class="t-en">💡 Tip: any dotted-underlined word like <span class="glossary" data-term="softmax">softmax</span> opens a definition.</span>
+        <span class="t-es">💡 Tip: cualquier palabra subrayada como <span class="glossary" data-term="softmax">softmax</span> abre una definición.</span>
+      </p>
+      <aside class="notes">
+        <span class="t-en">30 seconds per card. Don't deep-dive — students just need a mental model of "what is each of these things" before they see the code.</span>
+        <span class="t-es">30 segundos por tarjeta. No profundices — los alumnos solo necesitan saber "qué es cada cosa" antes de ver el código.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE H.1 — API SURFACE -->
+    <!-- ============================================================== -->
+    <section>
+      <h2>
+        <span class="t-en">The public API in one slide</span>
+        <span class="t-es">La API pública en una diapositiva</span>
+      </h2>
+      <p style="font-size: 0.78em;">
+        <span class="t-en">Four classes for compile time, one for runtime — exactly mirroring Block E.</span>
+        <span class="t-es">Cuatro clases para compilación, una para ejecución — espejo exacto del bloque E.</span>
+      </p>
+      <pre><code class="language-python" data-line-numbers="|1|2|3|4|5" data-trim>
+Grammar              # WHAT you want    (JSON, JSON schema, regex, EBNF)
+TokenizerInfo        # WHO you serve    (vocab + chat template)
+GrammarCompiler      # the COMPILE step (builds PDA + adaptive cache)
+CompiledGrammar      # the RESULT       (pickleable, reusable)
+GrammarMatcher       # the RUNTIME      (accept_token, fill_next_token_bitmask)
+      </code></pre>
+      <div class="callout fragment" style="margin-top: 14px;">
+        <span class="t-en">First four = once per grammar. Only <code>GrammarMatcher</code> runs per decoding step.</span>
+        <span class="t-es">Las primeras cuatro = una sola vez por gramática. Solo <code>GrammarMatcher</code> corre por paso de decodificación.</span>
+      </div>
+      <aside class="notes">
+        <span class="t-en">Tie this directly back to slide 19 (Compile vs Runtime). The Python API mirrors the algorithm 1:1.</span>
+        <span class="t-es">Conecta directo con la diapositiva 19 (Compilación vs Ejecución). La API en Python refleja el algoritmo 1:1.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE H.2 — INSTALL + HF -->
+    <!-- ============================================================== -->
+    <section>
+      <h2>
+        <span class="t-en">The easy path: HuggingFace Transformers</span>
+        <span class="t-es">El camino fácil: HuggingFace Transformers</span>
+      </h2>
+      <pre><code class="language-bash" data-trim>
+pip install "xgrammar>=0.1.30" transformers torch pydantic
+      </code></pre>
+      <pre><code class="language-python" data-line-numbers="|1-3|5-9|11-13|15-17" data-trim>
+import xgrammar as xgr
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
+
+model_name = "meta-llama/Llama-3.2-1B-Instruct"
+model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto")
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+config = AutoConfig.from_pretrained(model_name)
+
+tokenizer_info = xgr.TokenizerInfo.from_huggingface(tokenizer, vocab_size=config.vocab_size)
+compiler = xgr.GrammarCompiler(tokenizer_info)
+compiled = compiler.compile_builtin_json_grammar()  # or .compile_json_schema(...)
+
+logits_processor = xgr.contrib.hf.LogitsProcessor(compiled)
+out = model.generate(**inputs, max_new_tokens=256, logits_processor=[logits_processor])
+print(tokenizer.decode(out[0], skip_special_tokens=True))
+      </code></pre>
+      <p class="fragment" style="font-size: 0.7em; color: var(--muted);">
+        <span class="t-en">The mask + apply happens invisibly inside <span class="glossary" data-term="logits-processor"><code>LogitsProcessor</code></span>. Compile once, reuse forever.</span>
+        <span class="t-es">El cálculo y la aplicación de la máscara ocurren invisiblemente dentro de <span class="glossary" data-term="logits-processor"><code>LogitsProcessor</code></span>. Compila una vez, reutiliza siempre.</span>
+      </p>
+
+      <!-- Colab gotchas — surfaced after a real Colab run by the instructor -->
+      <div class="callout warn fragment" style="margin-top: 14px; font-size: 0.7em;">
+        <strong>⚠️
+          <span class="t-en">Colab gotchas</span><span class="t-es">Trampas en Colab</span>:
+        </strong>
+        <ul class="slim" style="margin: 6px 0 0 0;">
+          <li>
+            <span class="t-en"><code>meta-llama/Llama-3.2-1B-Instruct</code> is a <em>gated</em> repo. Either log in with <code>huggingface_hub.login(token)</code> first, or swap in an open model like <code>gpt2-medium</code>.</span>
+            <span class="t-es"><code>meta-llama/Llama-3.2-1B-Instruct</code> es un repo <em>gated</em>. Loguéate con <code>huggingface_hub.login(token)</code> o cambia a un modelo abierto como <code>gpt2-medium</code>.</span>
+          </li>
+          <li>
+            <span class="t-en">Base models (like <code>gpt2-medium</code>) have <strong>no chat template</strong>. Replace <code>tokenizer.apply_chat_template(...)</code> with a manual prompt: <code>"User: … \nAssistant:"</code>.</span>
+            <span class="t-es">Los modelos base (como <code>gpt2-medium</code>) <strong>no tienen chat template</strong>. Reemplaza <code>tokenizer.apply_chat_template(...)</code> con un prompt manual: <code>"User: … \nAssistant:"</code>.</span>
+          </li>
+          <li>
+            <span class="t-en"><code>xgrammar</code> doesn't expose <code>__version__</code>. Use <code>pip show xgrammar</code> from a shell cell if you need the version.</span>
+            <span class="t-es"><code>xgrammar</code> no expone <code>__version__</code>. Usa <code>pip show xgrammar</code> desde una celda de shell si necesitas la versión.</span>
+          </li>
+        </ul>
+      </div>
+
+      <aside class="notes">
+        <span class="t-en">If demoing on Colab live: open the companion notebook (already fixed for Colab). Walk through the three gotchas verbally — they're the most common 'why doesn't this run?' from students.</span>
+        <span class="t-es">Si demuestras en vivo en Colab: abre el notebook complementario (ya está corregido para Colab). Comenta las tres trampas en voz alta — son los 'por qué no me corre esto' más comunes de los alumnos.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE H.3 — MANUAL LOOP -->
+    <!-- ============================================================== -->
+    <section>
+      <h2>
+        <span class="t-en">The transparent path: the manual matcher loop</span>
+        <span class="t-es">El camino transparente: el loop manual del matcher</span>
+      </h2>
+      <p style="font-size: 0.72em;">
+        <span class="t-en">Same algorithm as Block E slide 19 — now in real Python.</span>
+        <span class="t-es">El mismo algoritmo de la diapositiva 19 del bloque E — ahora en Python real.</span>
+      </p>
+      <pre><code class="language-python" data-line-numbers="|1|2|5|6|7|8|9" data-trim>
+matcher = xgr.GrammarMatcher(compiled)
+token_bitmask = xgr.allocate_token_bitmask(1, tokenizer_info.vocab_size)
+
+while not matcher.is_terminated():
+    logits = model(torch.tensor([input_ids], device=model.device)).logits
+    matcher.fill_next_token_bitmask(token_bitmask)            # cache lookup + CD check
+    xgr.apply_token_bitmask_inplace(logits[0, -1, :], token_bitmask.to(logits.device))
+    next_id = torch.argmax(torch.softmax(logits[0, -1, :], dim=-1)).item()
+    matcher.accept_token(next_id)                              # advances persistent stack
+    input_ids.append(next_id)
+      </code></pre>
+      <div class="callout fragment" style="margin-top: 10px;">
+        <span class="t-en">Three lines of real code map to three theoretical concepts from the first 90 minutes.</span>
+        <span class="t-es">Tres líneas de código real mapean a tres conceptos teóricos de los primeros 90 minutos.</span>
+      </div>
+      <aside class="notes">
+        <span class="t-en">Optional section. Skip if running short. The pedagogical payoff is huge: students see Block E and Block F come alive.</span>
+        <span class="t-es">Sección opcional. Sáltala si vas corto de tiempo. El payoff pedagógico es enorme: ven los bloques E y F vivos.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE H.4 — vLLM -->
+    <!-- ============================================================== -->
+    <section>
+      <h2>
+        <span class="t-en">Production serving: <span class="glossary" data-term="vllm">vLLM</span></span>
+        <span class="t-es">Serving en producción: <span class="glossary" data-term="vllm">vLLM</span></span>
+      </h2>
+      <div class="cols">
+        <div>
+          <h3 style="font-size: 0.85em;">
+            <span class="t-en">Offline</span><span class="t-es">Sin servidor</span>
+          </h3>
+          <pre><code class="language-python" data-trim>
+from vllm import LLM, SamplingParams
+from vllm.sampling_params import GuidedDecodingParams
+
+llm = LLM(model="meta-llama/Llama-3.2-1B-Instruct")
+
+guided = GuidedDecodingParams(
+    json=schema, backend="xgrammar"
+)
+sp = SamplingParams(
+    temperature=0.7, max_tokens=128,
+    guided_decoding=guided,
+)
+out = llm.generate(["Describe Ada as JSON."], sp)
+print(out[0].outputs[0].text)
+          </code></pre>
+        </div>
+        <div>
+          <h3 style="font-size: 0.85em;">
+            <span class="t-en">OpenAI-compatible server</span>
+            <span class="t-es">Servidor compatible con OpenAI</span>
+          </h3>
+          <pre><code class="language-bash" data-trim>
+vllm serve meta-llama/Llama-3.2-1B-Instruct \
+  --guided-decoding-backend xgrammar
+          </code></pre>
+          <pre><code class="language-python" data-trim>
+from openai import OpenAI
+client = OpenAI(base_url="http://localhost:8000/v1",
+                api_key="-")
+
+resp = client.chat.completions.create(
+    model="meta-llama/Llama-3.2-1B-Instruct",
+    messages=[{"role": "user",
+               "content": "Ada as JSON."}],
+    extra_body={
+        "guided_json": schema,
+        "guided_decoding_backend": "xgrammar",
+    },
+)
+          </code></pre>
+        </div>
+      </div>
+      <p class="fragment" style="font-size: 0.7em; color: var(--muted);">
+        <span class="t-en">Keys: <code>guided_json</code>, <code>guided_regex</code>, <code>guided_choice</code>, <code>guided_grammar</code> (full EBNF — even SQL).</span>
+        <span class="t-es">Claves: <code>guided_json</code>, <code>guided_regex</code>, <code>guided_choice</code>, <code>guided_grammar</code> (EBNF completo — hasta SQL).</span>
+      </p>
+      <aside class="notes">
+        <span class="t-en">vLLM is the #1 production deployment for XGrammar. If students remember one engine, it should be this one.</span>
+        <span class="t-es">vLLM es el despliegue #1 de XGrammar en producción. Si recuerdan un solo motor, que sea este.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE H.5 — SGLang -->
+    <!-- ============================================================== -->
+    <section>
+      <h2><span class="glossary" data-term="sglang">SGLang</span></h2>
+      <pre><code class="language-python" data-line-numbers="|1-2|4-5|7-8|10-14|16" data-trim>
+import sglang as sgl, json
+from pydantic import BaseModel
+
+class Capital(BaseModel):
+    name: str; population: int
+
+llm = sgl.Engine(model_path="meta-llama/Meta-Llama-3.1-8B-Instruct",
+                 grammar_backend="xgrammar")  # default anyway
+
+sampling_params = {
+    "temperature": 0.1, "top_p": 0.95,
+    "json_schema": json.dumps(Capital.model_json_schema()),
+    # or: "regex": "(France|England)"
+    # or: "ebnf": "root ::= 'yes' | 'no'"
+}
+outputs = llm.generate(["Capital of France, JSON please."], sampling_params)
+print(outputs[0]["text"])
+      </code></pre>
+      <div class="callout fragment" style="margin-top: 10px;">
+        <span class="t-en">SGLang exposes <code>regex</code>, <code>ebnf</code>, and <code>structural_tag</code> as first-class sampling params. Best fit for agentic tool-calling patterns.</span>
+        <span class="t-es">SGLang expone <code>regex</code>, <code>ebnf</code> y <code>structural_tag</code> como parámetros de muestreo de primera clase. Ideal para patrones agénticos con tool-calling.</span>
+      </div>
+      <aside class="notes">
+        <span class="t-en">Mention structural_tag briefly — it's the XGrammar feature that lets you mix free-form text with structured tool calls.</span>
+        <span class="t-es">Menciona structural_tag brevemente — es la feature de XGrammar que mezcla texto libre con llamadas a tools estructuradas.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE H.6 — MLC-LLM -->
+    <!-- ============================================================== -->
+    <section>
+      <h2>
+        <span class="t-en"><span class="glossary" data-term="mlc-llm">MLC-LLM</span> — Apple Silicon &amp; browser</span>
+        <span class="t-es"><span class="glossary" data-term="mlc-llm">MLC-LLM</span> — Apple Silicon y navegador</span>
+      </h2>
+      <pre><code class="language-python" data-trim>
+from mlc_llm import MLCEngine
+
+engine = MLCEngine("HF://mlc-ai/Llama-3.2-1B-Instruct-q4f16_1-MLC")
+
+resp = engine.chat.completions.create(
+    messages=[{"role": "user", "content": "Describe Ada as JSON."}],
+    response_format={"type": "json_object", "schema": schema},
+)
+print(resp.choices[0].message.content)
+engine.terminate()
+      </code></pre>
+      <ul class="slim fragment" style="font-size: 0.78em; margin-top: 12px;">
+        <li>
+          <span class="t-en">Same authors as XGrammar — tightest integration.</span>
+          <span class="t-es">Mismos autores que XGrammar — la integración más estrecha.</span>
+        </li>
+        <li>
+          <span class="t-en">Only engine in this list that runs <span class="hl">in-browser</span> via WebLLM.</span>
+          <span class="t-es">El único motor de esta lista que corre <span class="hl">en el navegador</span> vía WebLLM.</span>
+        </li>
+        <li>
+          <span class="t-en">Pick this for offline-first or mobile apps.</span>
+          <span class="t-es">Elígelo para apps offline-first o móviles.</span>
+        </li>
+      </ul>
+      <aside class="notes">
+        <span class="t-en">Quick. Just enough to know it exists and when to reach for it.</span>
+        <span class="t-es">Rápido. Lo suficiente para saber que existe y cuándo usarlo.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE H.7 — DECISION MATRIX -->
+    <!-- ============================================================== -->
+    <section>
+      <h2>
+        <span class="t-en">Which engine when?</span>
+        <span class="t-es">¿Qué motor cuándo?</span>
+      </h2>
+      <table>
+        <thead>
+          <tr>
+            <th><span class="t-en">If you want…</span><span class="t-es">Si quieres…</span></th>
+            <th><span class="t-en">Reach for</span><span class="t-es">Usa</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="fragment">
+            <td><span class="t-en">Minimum-friction educational integration</span><span class="t-es">Integración educativa con mínima fricción</span></td>
+            <td>HF Transformers + <code>xgr.contrib.hf.LogitsProcessor</code></td>
+          </tr>
+          <tr class="fragment">
+            <td><span class="t-en">Production serving with the OpenAI API</span><span class="t-es">Serving en producción con la API de OpenAI</span></td>
+            <td><strong>vLLM</strong></td>
+          </tr>
+          <tr class="fragment">
+            <td><span class="t-en">Offline batch + structural tags / agents</span><span class="t-es">Batch offline + structural tags / agentes</span></td>
+            <td><strong>SGLang</strong></td>
+          </tr>
+          <tr class="fragment">
+            <td><span class="t-en">Apple Silicon / browser / mobile</span><span class="t-es">Apple Silicon / navegador / móvil</span></td>
+            <td><strong>MLC-LLM</strong></td>
+          </tr>
+          <tr class="fragment">
+            <td><span class="t-en">To understand the internals</span><span class="t-es">Entender las tripas</span></td>
+            <td><span class="t-en">manual <code>GrammarMatcher</code> loop</span><span class="t-es">loop manual de <code>GrammarMatcher</code></span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout fragment" style="margin-top: 20px;">
+        <span class="t-en">All four use XGrammar under the hood. Only the surface differs — the algorithm you spent 90 minutes learning is the same.</span>
+        <span class="t-es">Los cuatro usan XGrammar por debajo. Solo cambia la superficie — el algoritmo que aprendieron en 90 minutos es el mismo.</span>
+      </div>
+      <aside class="notes">
+        <span class="t-en">Close strong: unify everything. Students leave knowing that one algorithm powers production at four major engines.</span>
+        <span class="t-es">Cierra fuerte: unifica todo. Los alumnos se van sabiendo que un solo algoritmo mueve la producción de cuatro motores grandes.</span>
+      </aside>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SLIDE 31 — Q&A -->
+    <!-- ============================================================== -->
+    <section data-background-color="#0e7c66">
+      <div class="center" style="color: white;">
+        <h1 style="color: white; font-size: 3em;">
+          <span class="t-en">Q & A</span>
+          <span class="t-es">Preguntas</span>
+        </h1>
+        <hr style="width: 30%; margin: 2em auto; border-color: #c8ecdf;">
+        <p style="color: #c8ecdf;">
+          <span class="t-en">Thanks!</span>
+          <span class="t-es">¡Gracias!</span>
+        </p>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<div class="footer-note">XGrammar · 90-min lecture · Tec de Monterrey</div>
+
+<!-- Reveal.js scripts -->
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/highlight.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
+
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    transition: 'slide',
+    backgroundTransition: 'fade',
+    width: 1280,
+    height: 800,
+    margin: 0.06,
+    plugins: [ RevealHighlight, RevealNotes ]
+  });
+
+  // -------- Language toggle --------
+  (function initLangToggle() {
+    const KEY = 'xgrammar-deck-lang';
+    const saved = (typeof localStorage !== 'undefined' && localStorage.getItem(KEY)) || 'en';
+    setLang(saved);
+
+    document.querySelectorAll('#lang-toggle button').forEach(btn => {
+      btn.addEventListener('click', () => setLang(btn.dataset.lang));
+    });
+
+    function setLang(lang) {
+      if (lang !== 'en' && lang !== 'es') lang = 'en';
+      document.body.classList.remove('lang-en', 'lang-es');
+      document.body.classList.add('lang-' + lang);
+      document.documentElement.setAttribute('lang', lang);
+      document.querySelectorAll('#lang-toggle button').forEach(b => {
+        b.classList.toggle('active', b.dataset.lang === lang);
+      });
+      try { localStorage.setItem(KEY, lang); } catch (e) {}
+      // Notify reveal to re-layout in case content height changed
+      if (window.Reveal && Reveal.layout) Reveal.layout();
+    }
+
+    // Keyboard shortcut: 'L' toggles language
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'l' || e.key === 'L') {
+        const current = document.body.classList.contains('lang-es') ? 'es' : 'en';
+        setLang(current === 'en' ? 'es' : 'en');
+      }
+    });
+  })();
+
+  // -------- Mask grid demo (slide 7) --------
+  (function buildMaskDemo() {
+    const grid = document.getElementById('maskDemo');
+    if (!grid) return;
+    const pattern = [
+      1,1,1,0,1,1,1,1, 1,0,1,1,1,1,0,1,
+      1,1,1,1,1,1,1,1, 0,1,1,1,1,1,1,1
+    ];
+    pattern.forEach(v => {
+      const c = document.createElement('div');
+      c.className = 'cell ' + (v ? 'ok' : 'bad');
+      grid.appendChild(c);
+    });
+  })();
+
+  // -------- Worked-example mask (slide 21) --------
+  (function buildExampleMask() {
+    const grid = document.getElementById('exampleMask');
+    if (!grid) return;
+    const cls = ['bad','bad','ok','ok','ok','bad','bad','cd','bad','bad'];
+    const labels = ['[',']','0','1','2',',','[0','0]','00','X'];
+    cls.forEach((k, i) => {
+      const c = document.createElement('div');
+      c.className = 'cell ' + k;
+      c.style.display = 'flex';
+      c.style.alignItems = 'center';
+      c.style.justifyContent = 'center';
+      c.style.fontSize = '12px';
+      c.style.color = '#fff';
+      c.style.fontWeight = '700';
+      c.title = labels[i];
+      c.textContent = labels[i];
+      grid.appendChild(c);
+    });
+  })();
+
+  // -------- Glossary modal --------
+  const glossary = {
+    softmax: {
+      en: { title: "Softmax",
+            body: "Function that turns a vector of raw scores (<em>logits</em>) into a probability distribution that sums to 1. For each token <code>i</code>, the probability is <code>exp(logits[i]) / Σ exp(logits)</code>. Setting a logit to <code>-inf</code> sends its probability to 0 while preserving the relative ranking of the rest." },
+      es: { title: "Softmax",
+            body: "Función que convierte un vector de puntajes crudos (<em>logits</em>) en una distribución de probabilidad que suma 1. Para cada token <code>i</code>, la probabilidad es <code>exp(logits[i]) / Σ exp(logits)</code>. Poner un logit a <code>-inf</code> manda su probabilidad a 0 sin alterar el ranking relativo de los demás." } },
+    logits: {
+      en: { title: "Logits",
+            body: "The raw, unnormalized scores the transformer outputs for each token in the vocabulary at every decoding step. Shape: <code>(batch, seq_len, |V|)</code>. They become probabilities only after passing through softmax." },
+      es: { title: "Logits",
+            body: "Los puntajes crudos y sin normalizar que el transformer emite para cada token del vocabulario en cada paso de decodificación. Forma: <code>(batch, seq_len, |V|)</code>. Se convierten en probabilidades solo tras pasar por softmax." } },
+    bpe: {
+      en: { title: "BPE — Byte-Pair Encoding",
+            body: "The tokenization scheme used by most modern LLMs (Llama, GPT, etc.). Starts from raw <em>bytes</em>, then iteratively merges the most frequent adjacent pair until reaching a target vocabulary size. Because tokens are byte sequences, a single token can hold partial UTF-8 codepoints — which is exactly why XGrammar uses a byte-level PDA." },
+      es: { title: "BPE — Codificación por pares de bytes",
+            body: "El esquema de tokenización usado por la mayoría de los LLMs modernos (Llama, GPT, etc.). Parte de <em>bytes</em> crudos y fusiona iterativamente el par adyacente más frecuente hasta alcanzar el tamaño de vocabulario objetivo. Como los tokens son secuencias de bytes, un solo token puede llevar codepoints UTF-8 parciales — y por eso XGrammar usa un APD a nivel de bytes." } },
+    cfg: {
+      en: { title: "CFG — Context-Free Grammar",
+            body: "A formal grammar where each production rule has the form <code>A → β</code>, with a single nonterminal on the left and any string of terminals/nonterminals on the right. CFGs can describe nested structures like balanced braces (JSON, code blocks) that regular expressions cannot. The natural recognizer for a CFG is a pushdown automaton (PDA)." },
+      es: { title: "GLC — Gramática Libre de Contexto",
+            body: "Una gramática formal donde cada regla de producción tiene la forma <code>A → β</code>, con un solo no-terminal a la izquierda y cualquier cadena de terminales/no-terminales a la derecha. Las GLC pueden describir estructuras anidadas como llaves balanceadas (JSON, bloques de código), cosa que las expresiones regulares no pueden. El reconocedor natural de una GLC es un autómata de pila (APD)." } },
+    pda: {
+      en: { title: "PDA — Pushdown Automaton",
+            body: "An FSA augmented with a stack. Each transition can push or pop. PDAs recognize exactly the context-free languages. XGrammar's PDA uses one FSA per grammar rule and a stack of (rule, return-state) frames; recursion = pushing a rule reference, completion = popping." },
+      es: { title: "APD — Autómata de Pila",
+            body: "Un AF aumentado con una pila. Cada transición puede apilar o desapilar. Los APD reconocen exactamente los lenguajes libres de contexto. El APD de XGrammar usa un AF por regla gramatical y una pila de marcos (regla, estado-de-retorno); la recursión = apilar una referencia a regla, la terminación = desapilar." } },
+    fsa: {
+      en: { title: "FSA — Finite State Automaton",
+            body: "A machine with a finite set of states and labeled transitions. Recognizes <em>regular</em> languages — patterns like <code>a*b+</code> but not balanced parentheses. In XGrammar, each grammar rule compiles to one FSA; the PDA stack glues them together." },
+      es: { title: "AF — Autómata Finito",
+            body: "Una máquina con un conjunto finito de estados y transiciones etiquetadas. Reconoce lenguajes <em>regulares</em> — patrones como <code>a*b+</code> pero no paréntesis balanceados. En XGrammar, cada regla gramatical se compila a un AF; la pila del APD los conecta." } },
+    ebnf: {
+      en: { title: "EBNF — Extended Backus-Naur Form",
+            body: "A notation for writing context-free grammars. Rules look like <code>list ::= \"[\" elems \"]\"</code>. XGrammar accepts EBNF directly via <code>compile_grammar(ebnf_string)</code>. The specific dialect it uses is the same as <a href='https://github.com/ggerganov/llama.cpp/blob/master/grammars/README.md'>GGML BNF</a>." },
+      es: { title: "EBNF — Forma de Backus-Naur Extendida",
+            body: "Una notación para escribir gramáticas libres de contexto. Las reglas se ven así: <code>list ::= \"[\" elems \"]\"</code>. XGrammar acepta EBNF directamente vía <code>compile_grammar(ebnf_string)</code>. El dialecto que usa es el mismo de <a href='https://github.com/ggerganov/llama.cpp/blob/master/grammars/README.md'>GGML BNF</a>." } },
+    bitmask: {
+      en: { title: "Bitmask / Bitset",
+            body: "A compact representation of a set of integers as a string of bits, where bit <code>i</code> is 1 if integer <code>i</code> is in the set. For a 128k vocab that's 128k bits ≈ 16 KB; XGrammar packs it as a <code>(batch, ⌈|V|/32⌉)</code> <code>int32</code> tensor, ~4 KB per request per decoding step." },
+      es: { title: "Bitmask / Bitset",
+            body: "Representación compacta de un conjunto de enteros como una cadena de bits, donde el bit <code>i</code> es 1 si el entero <code>i</code> está en el conjunto. Para un vocabulario de 128k son 128k bits ≈ 16 KB; XGrammar lo empaca como tensor <code>(batch, ⌈|V|/32⌉)</code> <code>int32</code>, ~4 KB por solicitud por paso de decodificación." } },
+    utf8: {
+      en: { title: "UTF-8 codepoint",
+            body: "Each Unicode character is encoded in UTF-8 as 1 to 4 bytes. ASCII characters fit in 1 byte; accented Latin (é, ñ) takes 2; most CJK takes 3; emoji and rare scripts take 4. A BPE token may slice through this — e.g., a token may end in the first byte of a 3-byte codepoint, with the next token starting at the second byte." },
+      es: { title: "Codepoint UTF-8",
+            body: "Cada carácter Unicode se codifica en UTF-8 con 1 a 4 bytes. Los caracteres ASCII caben en 1 byte; los latinos con acento (é, ñ) toman 2; la mayoría del CJK toma 3; emojis y escrituras raras toman 4. Un token BPE puede partir esto — p.ej., un token puede terminar en el primer byte de un codepoint de 3 bytes y el siguiente empezar en el segundo." } },
+    persistent: {
+      en: { title: "Persistent execution stack",
+            body: "A data structure (Driscoll, Sarnak, Sleator, Tarjan, 1989) that stores all versions of all stacks as a single tree. A \"stack\" is just a pointer to a tree node; the path to the root reconstructs it. Forking and rollback are both O(1) pointer operations. XGrammar uses this so it can test ~120 candidate tokens per step without copying the parser state each time." },
+      es: { title: "Pila de ejecución persistente",
+            body: "Estructura de datos (Driscoll, Sarnak, Sleator, Tarjan, 1989) que guarda todas las versiones de todas las pilas como un solo árbol. Una \"pila\" es solo un puntero a un nodo del árbol; el camino a la raíz la reconstruye. Bifurcar y revertir son operaciones O(1) sobre punteros. XGrammar la usa para probar ~120 tokens candidatos por paso sin copiar el estado del parser cada vez." } },
+    "logits-processor": {
+      en: { title: "LogitsProcessor (HuggingFace)",
+            body: "A callback class in HuggingFace Transformers that runs inside <code>model.generate()</code> at every decoding step. It receives the current logits and the generated token IDs so far, and returns modified logits. XGrammar ships <code>xgr.contrib.hf.LogitsProcessor</code>, which sets the logits of grammar-illegal tokens to <code>-inf</code>." },
+      es: { title: "LogitsProcessor (HuggingFace)",
+            body: "Clase callback en HuggingFace Transformers que corre dentro de <code>model.generate()</code> en cada paso de decodificación. Recibe los logits actuales y los IDs de tokens generados hasta ahora, y devuelve logits modificados. XGrammar trae <code>xgr.contrib.hf.LogitsProcessor</code>, que pone a <code>-inf</code> los logits de tokens ilegales según la gramática." } },
+    vllm: {
+      en: { title: "vLLM",
+            body: "High-throughput LLM serving library from <strong>UC Berkeley</strong>. Famous for <strong>PagedAttention</strong>, a virtual-memory-style scheme that makes KV-cache memory ~3× more efficient. Production-grade: exposes an OpenAI-compatible HTTP API. Uses XGrammar as the default <code>guided_decoding_backend</code>." },
+      es: { title: "vLLM",
+            body: "Librería de serving de LLMs de alto throughput de <strong>UC Berkeley</strong>. Famosa por <strong>PagedAttention</strong>, un esquema estilo memoria virtual que hace la memoria del KV-cache ~3× más eficiente. Grado producción: expone API HTTP compatible con OpenAI. Usa XGrammar como <code>guided_decoding_backend</code> por defecto." } },
+    sglang: {
+      en: { title: "SGLang",
+            body: "LLM serving runtime <em>plus</em> a Python frontend DSL for orchestrating multi-step prompts. Built by the <strong>LMSYS</strong> team (creators of Chatbot Arena and Vicuna). Optimized for structured tasks, agentic loops, and tool calling. Uses XGrammar as the default <code>grammar_backend</code>." },
+      es: { title: "SGLang",
+            body: "Runtime de serving de LLMs <em>más</em> un DSL frontend en Python para orquestar prompts multi-paso. Hecho por el equipo de <strong>LMSYS</strong> (creadores de Chatbot Arena y Vicuna). Optimizado para tareas estructuradas, ciclos agénticos y tool-calling. Usa XGrammar como <code>grammar_backend</code> por defecto." } },
+    "mlc-llm": {
+      en: { title: "MLC-LLM",
+            body: "<strong>M</strong>achine <strong>L</strong>earning <strong>C</strong>ompilation for LLMs, from <strong>CMU</strong> and collaborators — same authors as XGrammar. Instead of serving a model, it <em>compiles</em> the model to a target: Apple Silicon (Metal), CUDA, ROCm, WebGPU (via WebLLM, runs in a browser tab), Android, iOS. The only path in this lecture that ships constrained decoding to mobile or browsers." },
+      es: { title: "MLC-LLM",
+            body: "<strong>M</strong>achine <strong>L</strong>earning <strong>C</strong>ompilation para LLMs, de <strong>CMU</strong> y colaboradores — mismos autores que XGrammar. En vez de servir un modelo, lo <em>compila</em> a un objetivo: Apple Silicon (Metal), CUDA, ROCm, WebGPU (vía WebLLM, corre en una pestaña del navegador), Android, iOS. La única vía en esta clase para llevar decodificación restringida a móvil o navegador." } }
+  };
+
+  function openGlossary(key) {
+    const lang = document.body.classList.contains('lang-es') ? 'es' : 'en';
+    const entry = glossary[key] && glossary[key][lang];
+    if (!entry) {
+      console.warn('No glossary entry for', key, lang);
+      return;
+    }
+    document.getElementById('glossary-modal-title').textContent = entry.title;
+    document.getElementById('glossary-modal-body').innerHTML = entry.body;
+    document.getElementById('glossary-modal').classList.remove('hidden');
+  }
+  function closeGlossary() {
+    document.getElementById('glossary-modal').classList.add('hidden');
+  }
+
+  // Click delegation for glossary triggers
+  document.body.addEventListener('click', (e) => {
+    const t = e.target.closest('.glossary');
+    if (t) {
+      e.stopPropagation();
+      e.preventDefault();
+      openGlossary(t.dataset.term);
+    }
+  }, true);
+
+  // Backdrop and close button
+  document.querySelector('#glossary-modal .modal-backdrop').addEventListener('click', closeGlossary);
+  document.querySelector('#glossary-modal .modal-close').addEventListener('click', closeGlossary);
+
+  // Keyboard handling: Esc closes; while modal is open, swallow other keys
+  // so reveal.js doesn't advance slides accidentally.
+  document.addEventListener('keydown', (e) => {
+    const modal = document.getElementById('glossary-modal');
+    if (modal && !modal.classList.contains('hidden')) {
+      if (e.key === 'Escape') {
+        closeGlossary();
+      }
+      e.stopImmediatePropagation();
+    }
+  }, true);
+
+  // -------- Quiz interactivity --------
+  function wireQuiz(id) {
+    const q = document.getElementById(id);
+    if (!q) return;
+    q.querySelectorAll('li').forEach(li => {
+      li.addEventListener('click', () => {
+        const correct = li.dataset.correct === 'true';
+        li.classList.add(correct ? 'correct' : 'wrong');
+      });
+    });
+  }
+  ['q1','q2','q3'].forEach(wireQuiz);
+</script>
+</body>
+</html>
