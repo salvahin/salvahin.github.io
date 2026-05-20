@@ -15,6 +15,10 @@ The 2026 cohort works on agentic LLM systems with an emphasis on efficient infer
 
 - **Course site:** [salvahin.github.io/ACA-2026](https://salvahin.github.io/ACA-2026)
 
+### Lecture Slides
+
+- [Inside XGrammar: Constrained Decoding]({{ '/assets/presentations/xgrammar.html' | relative_url }}) - How XGrammar enforces structured outputs (JSON, grammars) during LLM inference
+
 ---
 
 ## TC6003 - Analysis and Design of Algorithms
