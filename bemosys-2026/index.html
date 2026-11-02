@@ -435,34 +435,26 @@ pre.code .ln.bad{color:#d7e3f4}
   <div class="kicker">Why MLOps was hard</div>
   <h2>For years, MLOps had a people problem</h2>
   <div class="row grow" style="align-items:center">
-    <svg id="venn" width="640" height="430" viewBox="0 0 640 430">
+    <svg id="venn" width="640" height="440" viewBox="0 0 640 440">
+      <text id="v-year" x="320" y="30" text-anchor="middle" font-size="21" font-weight="700" fill="var(--accent)">~2015: two communities</text>
       <g id="v-ml">
-        <circle cx="220" cy="200" r="168" fill="rgba(185,137,47,.16)" stroke="var(--brass)" stroke-width="5"/>
-        <text x="150" y="118" text-anchor="middle" font-size="25" font-weight="800" fill="var(--accent2)">Machine</text>
-        <text x="150" y="146" text-anchor="middle" font-size="25" font-weight="800" fill="var(--accent2)">learning</text>
-        <text x="128" y="196" text-anchor="middle" font-size="18" fill="var(--muted)">statistics</text>
-        <text x="128" y="222" text-anchor="middle" font-size="18" fill="var(--muted)">experiments</text>
-        <text x="128" y="248" text-anchor="middle" font-size="18" fill="var(--muted)">notebooks</text>
-        <text x="128" y="274" text-anchor="middle" font-size="18" fill="var(--muted)">models &amp; papers</text>
+        <circle cx="230" cy="215" r="150" fill="rgba(185,137,47,.16)" stroke="var(--brass)" stroke-width="5"/>
+        <text x="145" y="208" text-anchor="middle" font-size="22" font-weight="800" fill="var(--accent2)">Machine</text>
+        <text x="145" y="236" text-anchor="middle" font-size="22" font-weight="800" fill="var(--accent2)">learning</text>
       </g>
       <g id="v-dev">
-        <circle cx="420" cy="200" r="168" fill="rgba(20,52,107,.10)" stroke="var(--navy)" stroke-width="5"/>
-        <text x="492" y="118" text-anchor="middle" font-size="25" font-weight="800" fill="var(--navy)">Software &amp;</text>
-        <text x="492" y="146" text-anchor="middle" font-size="25" font-weight="800" fill="var(--navy)">DevOps</text>
-        <text x="512" y="196" text-anchor="middle" font-size="18" fill="var(--muted)">version control</text>
-        <text x="512" y="222" text-anchor="middle" font-size="18" fill="var(--muted)">CI/CD, testing</text>
-        <text x="512" y="248" text-anchor="middle" font-size="18" fill="var(--muted)">infrastructure</text>
-        <text x="512" y="274" text-anchor="middle" font-size="18" fill="var(--muted)">on-call, monitoring</text>
+        <circle cx="410" cy="215" r="150" fill="rgba(20,52,107,.10)" stroke="var(--navy)" stroke-width="5"/>
+        <text x="495" y="208" text-anchor="middle" font-size="22" font-weight="800" fill="var(--navy)">Software</text>
+        <text x="495" y="236" text-anchor="middle" font-size="22" font-weight="800" fill="var(--navy)">&amp; DevOps</text>
       </g>
-      <g id="v-mid" style="opacity:0;transition:opacity .8s">
-        <text x="320" y="206" text-anchor="middle" font-size="24" font-weight="800" fill="var(--fg)">MLOps</text>
-      </g>
-      <text id="v-year" x="320" y="412" text-anchor="middle" font-size="21" font-weight="700" fill="var(--accent)">~2015: two communities</text>
+      <text id="v-mid" x="320" y="223" text-anchor="middle" font-size="22" font-weight="800" fill="var(--fg)" style="opacity:0;transition:opacity .8s">MLOps</text>
+      <text x="160" y="400" text-anchor="middle" font-size="17" fill="var(--muted)">statistics · experiments · models</text>
+      <text x="480" y="400" text-anchor="middle" font-size="17" fill="var(--muted)">CI/CD · infrastructure · on-call</text>
     </svg>
     <div class="grow" style="padding-left:24px">
-      <div class="callout">Different conferences, vocabularies and toolchains. Few people were fluent in <b>both</b>.</div>
-      <div class="callout frag" data-f="1">MLOps lives in that intersection, and it grew slowly.</div>
-      <div class="callout frag" data-f="2"><b>Coding agents are collapsing the gap.</b></div>
+      <div class="callout">ML experts and DevOps engineers grew up in <b>different communities</b>: different conferences, vocabularies and tools.</div>
+      <div class="callout frag" data-f="1">MLOps needs both, and the people fluent in both stayed <b>few</b>.</div>
+      <div class="callout frag" data-f="2"><b class="acc">Coding agents are now pushing the circles together.</b></div>
     </div>
   </div>
   <aside class="notes">~1.5 min. Now that both terms are defined, the people story. For years, the barrier to MLOps wasn't only technical: ML experts and software/DevOps engineers lived in different communities, with different conferences, vocabularies and tools. [click] The overlap — people fluent in both — grew slowly; that overlap is MLOps. [click] Now the circles are being pushed together, by agents.</aside>
@@ -889,10 +881,10 @@ function barsEnter(el){
 }
 hooks['s-mle']={enter:barsEnter}; hooks['s-devs']={enter:barsEnter}; hooks['s-latam']={enter:barsEnter};
 hooks['s-comm']={step(el,k){
-  const off=[[-80,80],[-25,25],[22,-22]][Math.min(k,2)];
+  const off=[[-60,60],[-12,12],[15,-15]][Math.min(k,2)];
   $('#v-ml').style.transform=`translateX(${off[0]}px)`; $('#v-dev').style.transform=`translateX(${off[1]}px)`;
   $('#v-mid').style.opacity=k>=1?1:0;
-  $('#v-year').textContent=['~2015: two communities','~2020: MLOps emerges at the overlap','2026: coding agents bridge both'][Math.min(k,2)];
+  $('#v-year').textContent=['~2015: two communities','~2020: MLOps at the overlap','2026: agents push them together'][Math.min(k,2)];
 }};
 hooks['s-loop']={step(el,k){$('#loopsvg').classList.toggle('hl',k>=1);}};
 hooks['s-good']={
