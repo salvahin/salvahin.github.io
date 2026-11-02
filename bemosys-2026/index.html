@@ -565,10 +565,10 @@ pre.code .ln.bad{color:#d7e3f4}
     <div class="grow" style="padding-left:20px">
       <div class="callout frag"><b class="acc2">Measure</b> is the only step that touches reality.</div>
       <div class="callout frag">Agents are optimizers. <b>The evaluator is their objective function.</b></div>
-      <div class="callout frag muted">Anyone from evolutionary computation knows this one: <i style="color:var(--fg)">the fitness function <u>is</u> the specification.</i></div>
+      <div class="callout frag muted">Whatever the evaluator rewards, the agent will deliver: <i style="color:var(--fg)">what you measure <u>becomes</u> the specification.</i></div>
     </div>
   </div>
-  <aside class="notes">~0.75 min. AIDE, R&D-Agent, AlphaEvolve, Claude Code, Codex — architecturally they all run propose–run–measure–repair. [click] The measure step is the only contact with ground truth. [click] So an agent is a search algorithm, and the evaluator is its objective. [click] For the EC people in the room: we've known for decades that evolution exploits any bug in the fitness function. Now that search runs over code, with very strong priors.</aside>
+  <aside class="notes">~0.75 min. AIDE, R&D-Agent, AlphaEvolve, Claude Code, Codex — architecturally they all run propose–run–measure–repair. [click] The measure step is the only contact with ground truth. [click] So an agent is a search algorithm, and the evaluator is its objective. [click] Any optimizer exploits gaps in what it is scored on; an agent is an optimizer over code, with very strong priors, so whatever the evaluator rewards is what you get.</aside>
 </section>
 <section class="slide" id="s-alpha">
   <div class="kicker">01 · State of the art</div>
@@ -726,29 +726,7 @@ pre.code .ln.bad{color:#d7e3f4}
   <aside class="notes">~0.75 min. Build it zone by zone. Agent sandbox; the trust boundary; the verifier that the agent can't read; the human gate that reads evidence, not diffs; production with drift and coverage monitoring — drift breaks any calibration, so it must be watched. Last click: green candidate passes; red one bounces back with a coarse reason.</aside>
 </section>
 
-<!-- LATAM CONTEXT -->
-<section class="slide" id="s-latam">
-  <div class="kicker">04 · Opportunities for LatAm</div>
-  <h2>The region adopts AI quickly, but specialists are scarce</h2>
-  <div class="row grow">
-    <div class="grow mle-bars" style="max-width:560px">
-      <div class="lab" style="font-size:19px;margin-bottom:4px"><b>ILIA 2025 · AI adoption sub-index</b> (0–100)</div>
-      <div class="r sm"><div class="lab">Brazil</div><div class="trk"><div class="bar" data-v="71.2" data-max="100"></div><div class="v" data-v="71.2">0</div></div></div>
-      <div class="r sm"><div class="lab">Peru</div><div class="trk"><div class="bar" data-v="67.5" data-max="100"></div><div class="v" data-v="67.5">0</div></div></div>
-      <div class="r sm"><div class="lab">Colombia</div><div class="trk"><div class="bar" data-v="67.3" data-max="100"></div><div class="v" data-v="67.3">0</div></div></div>
-      <div class="r sm"><div class="lab">Costa Rica</div><div class="trk"><div class="bar" data-v="66.3" data-max="100"></div><div class="v" data-v="66.3">0</div></div></div>
-      <div class="r sm"><div class="lab">Chile</div><div class="trk"><div class="bar" data-v="65.8" data-max="100"></div><div class="v" data-v="65.8">0</div></div></div>
-      <div class="r sm"><div class="lab">Mexico</div><div class="trk"><div class="bar" data-v="63.3" data-max="100"></div><div class="v" data-v="63.3">0</div></div></div>
-    </div>
-    <div class="grow" style="margin-left:30px">
-      <div class="stat frag"><div class="big" style="font-size:44px">87%</div><div class="d">of the region's active AI researchers are in just 5 countries; Brazil and Mexico alone hold 68%.</div></div>
-      <div class="stat frag"><div class="big" style="font-size:44px">6th → 8th</div><div class="d">Mexico's drop in the 2025 index, with human talent as a weak factor.</div></div>
-      <div class="stat frag"><div class="big" style="font-size:44px">#4</div><div class="d">Brazil's rank among GitHub developer communities worldwide (~6.9M).</div></div>
-    </div>
-  </div>
-  <div class="src">ILIA 2025, Índice Latinoamericano de Inteligencia Artificial (CENIA &amp; CEPAL) and press coverage; GitHub Octoverse 2025.</div>
-  <aside class="notes">~1 min. Adoption is high: six countries score above 60 on the ILIA adoption sub-index. [clicks] But specialized talent is scarce and concentrated: 87% of active AI researchers in five countries; Mexico fell from 6th to 8th, with human talent as a weak factor. Meanwhile the developer base is huge and growing. The gap between many developers and few ML specialists is exactly the gap agents can bridge, or widen.</aside>
-</section>
+
 
 <!-- OPPORTUNITIES -->
 <section class="slide" id="s-opps">
